@@ -73,6 +73,10 @@ int CheckAlternate(const glm::vec3& w, const Triangle& tri,
          ++nb_fails;
          std::cout << "Error for n=" << n << " : " 
                    << moments[n] << " > 0" << std::endl;
+      } else if(std::isnan(moments[n])) {
+          ++nb_fails;
+          std::cout << "Error for n=" << n << " : "
+                    << moments[n] << " is NaN" << std::endl;
       }
    }
 
@@ -85,15 +89,16 @@ int CheckAlternate(const glm::vec3& w, const Triangle& tri,
 
 int main(int argc, char** argv) {
 
+   const float Eps = 1.0E-5;
+
    glm::vec3 A, B, C;
-   A = glm::vec3(0.0, 0.0, 1.0);
-   B = glm::vec3(0.0, 0.5, 1.0);
-   C = glm::vec3(0.5, 0.0, 1.0);
+   A = glm::vec3(Eps, Eps, 1.0);
+   B = glm::vec3(Eps, 0.5, 1.0);
+   C = glm::vec3(0.5, Eps, 1.0);
    Triangle  tri(glm::normalize(A), glm::normalize(B), glm::normalize(C));
    glm::vec3 w;
    
    // Track the number of failed tests
-   float Epsilon = 1.0E-2;
    int nMin = 0, nMax = 10;
    int nb_fails = 0;
  

@@ -51,6 +51,14 @@ inline int sign(T val) {
     return (T(0) <= val) - (val < T(0));
 }
 
+/* Clamp function template to restrict a given function to be in between
+ * boundaries.
+ */
+template <typename T>
+inline T clamp(T val, T a, T b) {
+    return std::max<T>(a, std::min<T>(b, val));
+}
+
 
 /* _Line Integral_
  */
@@ -72,7 +80,7 @@ inline Eigen::VectorXf LineIntegral(const Vector& A, const Vector& B,
    auto c = sqrt(a*a + b*b);
 
    auto l = acos(Vector::Dot(A, B) / (Vector::Dot(A,A)*Vector::Dot(B,B)));
-   auto p = sign(b) * acos(a / c);
+   auto p = sign(b) * acos(clamp<float>(a / c, -1.0f, 1.0f));
 
    return CosSumIntegral(-p, l-p, c, n);
 }

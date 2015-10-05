@@ -110,14 +110,9 @@ bool HitTriangle(const Triangle& triangle, const Vector& w) {
 }
 
 float MonteCarloMoments(const Triangle& triangle, const Vector& w, int n) {
-
-   glm::vec3 A = triangle[0].B - triangle[0].A; // edge 0
-   glm::vec3 B = triangle[1].B - triangle[1].A; // edge 1
-   glm::vec3 N = glm::normalize(glm::cross(A, B)); // this is the triangle's normal
-   //float D = glm::dot(N, triangle[0].A);
-
+    
    // Number of MC samples
-   const int M = 1000000;
+   const int M = 100000;
    float val = 0.0f;
    for(int k=0; k<M; ++k) {
       float pdf;
@@ -157,7 +152,8 @@ int TestMoments(const glm::vec3& w, const Triangle& tri,
       auto montecarlo = MonteCarloMoments(tri, w, n);
       std::cout << "MonteCarlo for n=" << n << " : " << montecarlo << std::endl;
 
-      if(std::abs(analytical - montecarlo) > Epsilon*std::abs(analytical)) {
+      if(std::abs(analytical - montecarlo) > Epsilon*std::abs(analytical) ||
+         std::isnan(analytical)) {
          std::cerr << "Error: moment " << n << " differs from MC!" << std::endl;
          std::cerr << "       error is = " << std::abs(analytical - montecarlo) << std::endl;
          ++nb_fails;
@@ -169,19 +165,21 @@ int TestMoments(const glm::vec3& w, const Triangle& tri,
 }
 
 int main(int argc, char** argv) {
-
-   glm::vec3 A, B, C;
-   A = glm::vec3(0.0, 0.0, 1.0);
-   B = glm::vec3(0.0, 0.5, 1.0);
-   C = glm::vec3(0.5, 0.0, 1.0);
-   Triangle  tri(glm::normalize(A), glm::normalize(B), glm::normalize(C));
-   glm::vec3 w;
    
    // Track the number of failed tests
-   float Epsilon = 1.0E-2;
+   float Eps = 1.0E-5, Epsilon = 1.0E-2;
    int nMin = 0, nMax = 10;
    int nb_fails = 0;
  
+
+   // Generate a triangle + lobe direction configuration
+   glm::vec3 A, B, C;
+   A = glm::vec3(Eps, Eps, 1.0);
+   B = glm::vec3(Eps, 0.5, 1.0);
+   C = glm::vec3(0.5, Eps, 1.0);
+   Triangle  tri(glm::normalize(A), glm::normalize(B), glm::normalize(C));
+   glm::vec3 w;
+   
    // Change the moments' axis 
    w = glm::normalize(glm::vec3(0, 0, 1));
    nb_fails += TestMoments(w, tri, nMin, nMax, Epsilon);
@@ -197,8 +195,8 @@ int main(int argc, char** argv) {
 
    // Change the triangle
    A = glm::vec3(0.00, 0.00, 1.0);
-   B = glm::vec3(0.1, 0.00, 1.0);
-   C = glm::vec3(0.00, 0.1, 1.0);
+   B = glm::vec3(0.00, 0.1, 1.0);
+   C = glm::vec3(0.01, 0.00, 1.0);
    tri = Triangle(glm::normalize(A), glm::normalize(B), glm::normalize(C));
    w = glm::normalize(glm::vec3(0.05,0.05,1));
    nb_fails += TestMoments(w, tri, nMin, nMax, Epsilon);
