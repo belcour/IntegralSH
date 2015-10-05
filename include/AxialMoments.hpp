@@ -17,30 +17,35 @@ inline Eigen::VectorXf CosSumIntegral(float x, float y, float c, int n) {
 	const float cosy2 = cosy*cosy;
 	const float cosx2 = cosx*cosx;
 
-   auto i = n % 2;
-   const bool is_n_even = i == 0;
-   auto F = (is_n_even) ? y-x : siny-sinx;
+   static const Eigen::Vector2f i1 = {1.0f, 1.0f};
+   static const Eigen::Vector2f i2 = {2.0f, 2.0f};
+   Eigen::Vector2f i = {0.0f, 1.0f};
+   Eigen::Vector2f F = {y-x, siny-sinx};
+   Eigen::Vector2f S = {0.0f, 0.0f};
 
-   Eigen::VectorXf S = Eigen::VectorXf::Zero(1);
+   Eigen::VectorXf R = Eigen::VectorXf::Zero(n+2);
 
-   auto pow_c    = (is_n_even) ? 1.0  : c;
-   auto pow_cosy = (is_n_even) ? cosy : cosy2;
-   auto pow_cosx = (is_n_even) ? cosx : cosx2;
+   Eigen::Vector2f pow_c    = {1.0, c};
+   Eigen::Vector2f pow_cosx = {cosy, cosy2};
+   Eigen::Vector2f pow_cosy = {cosx, cosx2};
 
-   while(i <= n) {
-      S[0] += pow_c * F;
+   int index = 0;
+   while(index <= n) {
+      S += pow_c.cwiseProduct(F);
+      R.segment(index+1, 2) = S;
 
       auto T = pow_cosy*siny - pow_cosx*sinx;
-      F = (T + (i+1)*F) / (i+2);
+      F = (T + (i+i1).cwiseProduct(F)).cwiseQuotient(i+i2);
 
       // Update temp variable
-      i        += 2;
+      index    += 2;
+      i        += i2;
       pow_c    *= c*c;
       pow_cosx *= cosx2;
       pow_cosy *= cosy2;
    }
 
-   return S;
+   return R;
 }
 
 /* Sign function template
@@ -59,7 +64,7 @@ inline Eigen::VectorXf LineIntegral(const Vector& A, const Vector& B,
    auto wDotA = Vector::Dot(A, w);
    auto wDotB = Vector::Dot(B, w);
    if(n < 0 || (wDotA == 0.0f && wDotB == 0.0f)) {
-      return Eigen::VectorXf::Zero(1);
+      return Eigen::VectorXf::Zero(n+2);
    }
 
    // Need check: expanding the (I-ssT)B expression from Arvo's LineIntegral
@@ -87,7 +92,7 @@ template<class Polygon, class Vector>
 inline Eigen::VectorXf BoundaryIntegral(const Polygon& P, const Vector& w,
                                         const Vector& v, int n) {
    // Init to zero
-   Eigen::VectorXf b = Eigen::VectorXf::Zero(1);
+   Eigen::VectorXf b = Eigen::VectorXf::Zero(n+2);
 
    for(auto edge : P) {
       // Compute the edge normal
@@ -140,12 +145,18 @@ inline float SolidAngle(const Polygon& P) {
  */
 template<class Polygon, class Vector>
 inline Eigen::VectorXf AxialMoment(const Polygon& P, const Vector& w, int n) {
+
+   // Arvo's boundary integral for single vector moment.
    Eigen::VectorXf a = BoundaryIntegral<Polygon, Vector>(P, w, w, n-1);
-   if(n % 2 == 0) {
-      auto b = Eigen::VectorXf(a.size());
-      b.fill(SolidAngle<Polygon, Vector>(P));
-      return (a + b) / float(n+1);
-   } else {
-      return a / float(n+1);
-   }
+
+   // Generate the 'b' vector which equals to the Polygon solid angle for 
+   // even moments and zero for odd moments.
+   const int n2 = (n+1)/2;
+   auto b = Eigen::Map<Eigen::VectorXf, 0, Eigen::InnerStride<2>>(a.data(), n2); 
+   b += Eigen::VectorXf::Constant(n2, SolidAngle<Polygon, Vector>(P));
+
+   // 'c' is the vector of linear elements, storing 'i+1' for index 'i'
+   auto c = Eigen::VectorXf::LinSpaced(n+1, 1, n+1);
+
+   return a.cwiseQuotient(c);
 }

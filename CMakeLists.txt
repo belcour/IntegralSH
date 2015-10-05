@@ -1,6 +1,8 @@
 cmake_minimum_required (VERSION 3.2)
 project (AxialMoments)
 
+set(CMAKE_BUILD_TYPE DEBUG)
+
 include_directories ("include" "externals/Eigen" "externals/glm")
 
 add_executable (Test tests/TestMoments.cpp)

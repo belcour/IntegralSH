@@ -145,7 +145,7 @@ float MonteCarloMoments(const Triangle& triangle, const Vector& w, int n) {
    //float D = glm::dot(N, triangle[0].A);
 
    // Number of MC samples
-   const int M = 10000;
+   const int M = 1000000;
    float val = 0.0f;
    for(int k=0; k<M; ++k) {
       float pdf;
@@ -180,9 +180,11 @@ int TestMoments(const glm::vec3& w, const Triangle& tri,
    // Track the number of failed tests
    int nb_fails = 0;
 
+   auto moments = AxialMoment<Triangle, Vector>(tri, w, nMax);
+
    // Test the difference between analytical code and MC
    for(int n=nMin; n<=nMax; ++n) {
-      auto analytical = AxialMoment<Triangle, Vector>(tri, w, n)[0];
+      auto analytical = moments[n];
       std::cout << "Analytical for n=" << n << " : " << analytical << std::endl;
 
       auto montecarlo = MonteCarloMoments(tri, w, n);
