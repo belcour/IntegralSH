@@ -32,6 +32,10 @@ int CheckPositive(const glm::vec3& w, const Triangle& tri,
          ++nb_fails;
          std::cout << "Error for n=" << n << " : " 
                    << moments[n] << " < 0" << std::endl;
+      } else if(std::isnan(moments[n])) {
+          ++nb_fails;
+          std::cout << "Error for n=" << n << " : "
+                    << moments[n] << " is NaN" << std::endl;
       }
    }
 
@@ -111,6 +115,9 @@ int main(int argc, char** argv) {
 
    w = glm::normalize(glm::vec3(1, 0, 0));
    nb_fails += CheckPositive(w, tri, nMin, nMax);
+
+   w = glm::normalize(glm::vec3(-1, 0, 0));
+   nb_fails += CheckAlternate(w, tri, nMin, nMax);
 
    if(nb_fails == 0)
       return EXIT_SUCCESS;

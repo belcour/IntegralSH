@@ -44,14 +44,18 @@ inline Eigen::VectorXf CosSumIntegral(float x, float y, float c, int n) {
    return R;
 }
 
-/* Sign function template
+/* _sign_
+ *
+ * Sign function template
  */
 template <typename T>
 inline int sign(T val) {
     return (T(0) <= val) - (val < T(0));
 }
 
-/* Clamp function template to restrict a given function to be in between
+/* _clamp_
+ *
+ * Clamp function template to restrict a given function to be in between
  * boundaries.
  */
 template <typename T>

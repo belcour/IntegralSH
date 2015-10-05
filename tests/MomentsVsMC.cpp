@@ -193,6 +193,13 @@ int main(int argc, char** argv) {
    w = glm::normalize(glm::vec3(1, 0, 0));
    nb_fails += TestMoments(w, tri, nMin, nMax, Epsilon);
 
+   // Change the triangle slightly but change the same axis.
+   A = glm::vec3(0.0, 0.0, 1.0);
+   B = glm::vec3(0.0, 0.5, 1.0);
+   C = glm::vec3(0.5, 0.0, 1.0);
+   tri = Triangle(glm::normalize(A), glm::normalize(B), glm::normalize(C));
+   nb_fails += TestMoments(w, tri, nMin, nMax, Epsilon);
+
    // Change the triangle
    A = glm::vec3(0.00, 0.00, 1.0);
    B = glm::vec3(0.00, 0.1, 1.0);
