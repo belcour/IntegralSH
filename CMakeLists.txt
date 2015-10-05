@@ -11,5 +11,5 @@ target_compile_features(TestMnVsMC PRIVATE cxx_range_for)
 target_compile_features(TestMnSign PRIVATE cxx_range_for)
 
 enable_testing()
-add_test(MomentsTest TestMnVsMC)
-add_test(MomentsTest TestMnSign)
+add_test(TestMnVsMC TestMnVsMC)
+add_test(TestMnSign TestMnSign)

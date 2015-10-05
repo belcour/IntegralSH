@@ -4,10 +4,6 @@
 #include <Eigen/Core>
 #include <iostream>
 
-/* TODO: Change the output type from Eigen::VectorXf to a template type
- * with possible predefined 'n'.
- */
-
 /* _Cosine Sum Integral_
  */
 inline Eigen::VectorXf CosSumIntegral(float x, float y, float c, int n) {
