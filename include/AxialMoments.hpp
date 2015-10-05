@@ -1,5 +1,6 @@
 // Eigen includes
 #include <Eigen/Core>
+#include <iostream>
 
 /* TODO: Change the output type from Eigen::VectorXf to a template type
  * with possible predefined 'n'.
@@ -16,8 +17,8 @@ inline Eigen::VectorXf CosSumIntegral(float x, float y, float c, int n) {
 	const float cosy2 = cosy*cosy;
 	const float cosx2 = cosx*cosx;
 
-   const bool is_n_even = n % 2 == 0;
-   auto i = (is_n_even) ? 0 : 1;
+   auto i = n % 2;
+   const bool is_n_even = i == 0;
    auto F = (is_n_even) ? y-x : siny-sinx;
 
    Eigen::VectorXf S = Eigen::VectorXf::Zero(1);
@@ -27,7 +28,7 @@ inline Eigen::VectorXf CosSumIntegral(float x, float y, float c, int n) {
    auto pow_cosx = (is_n_even) ? cosx : cosx2;
 
    while(i <= n) {
-      S[0] = ((i < 2) ? 0.0 : S[0]) + pow_c * F;
+      S[0] += pow_c * F;
 
       auto T = pow_cosy*siny - pow_cosx*sinx;
       F = (T + (i+1)*F) / (i+2);
@@ -107,12 +108,18 @@ template<class Polygon, class Vector>
 inline float SolidAngle(const Polygon& P) {
    if(P.size() == 3) {
 
-      const Vector a = Vector::Normalize(Vector::Cross(P[0].A, P[1].A));
-      const Vector b = Vector::Normalize(Vector::Cross(P[1].A, P[2].A));
-      const Vector c = Vector::Normalize(Vector::Cross(P[2].A, P[0].A));
-      return acos(Vector::Dot(a, b)) +
-             acos(Vector::Dot(b, c)) +
-             acos(Vector::Dot(c, a)) - M_PI;
+      const Vector& A = P[0].A;
+      const Vector& B = P[1].A;
+      const Vector& C = P[2].A;
+
+      const Vector ab = Vector::Normalize(Vector::Cross(A, B));
+      const Vector ac = Vector::Normalize(Vector::Cross(A, C));
+      const Vector ba = Vector::Normalize(Vector::Cross(B, A));
+      const Vector bc = Vector::Normalize(Vector::Cross(B, C));
+      const Vector cb = Vector::Normalize(Vector::Cross(C, B));
+      return acos(Vector::Dot(ba, ac)) +
+             acos(Vector::Dot(cb, ab)) +
+             acos(Vector::Dot(ac, bc)) - M_PI;
 
    } else {
       return 0.0f;
@@ -133,7 +140,7 @@ inline float SolidAngle(const Polygon& P) {
  */
 template<class Polygon, class Vector>
 inline Eigen::VectorXf AxialMoment(const Polygon& P, const Vector& w, int n) {
-   Eigen::VectorXf a = - BoundaryIntegral<Polygon, Vector>(P, w, w, n-1);
+   Eigen::VectorXf a = BoundaryIntegral<Polygon, Vector>(P, w, w, n-1);
    if(n % 2 == 0) {
       auto b = Eigen::VectorXf(a.size());
       b.fill(SolidAngle<Polygon, Vector>(P));
