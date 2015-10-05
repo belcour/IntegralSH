@@ -106,13 +106,13 @@ int main(int argc, char** argv) {
    int nMin = 0, nMax = 10;
    int nb_fails = 0;
  
-   // Change the moments' axis 
+   // Change the moments' axis
    w = glm::normalize(glm::vec3(0, 0, 1));
    nb_fails += CheckPositive(w, tri, nMin, nMax);
    
    w = glm::normalize(glm::vec3(0, 0, -1));
    nb_fails += CheckAlternate(w, tri, nMin, nMax);
-
+    
    w = glm::normalize(glm::vec3(1, 0, 0));
    nb_fails += CheckPositive(w, tri, nMin, nMax);
 

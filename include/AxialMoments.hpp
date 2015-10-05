@@ -28,9 +28,16 @@ inline Eigen::VectorXf CosSumIntegral(float x, float y, float c, int n) {
    Eigen::Vector2f pow_cosy = {cosx, cosx2};
 
    while(i[1] <= n) {
+      // S <= S + c^{i} F
       S += pow_c.cwiseProduct(F);
+      
+      // The resulting vector `R` is shifted of one to the right. This is due to
+      // the fact that order `n` moment requires only up to order `n-1` power of
+      // cosine integrals.
       R.segment(i[1], 2) = S;
 
+      // T <= cos(y)^{i+1} sin(y) - cos(x)^{i+1} sin(x)
+      // F <= (T + i+1) F / (i+2)
       auto T = pow_cosy*siny - pow_cosx*sinx;
       F = (T + (i+i1).cast<float>().cwiseProduct(F)).cwiseQuotient((i+i2).cast<float>());
 
@@ -41,6 +48,9 @@ inline Eigen::VectorXf CosSumIntegral(float x, float y, float c, int n) {
       pow_cosy *= cosy2;
    }
 
+#ifdef VERBOSE
+   std::cout << "R = [" << R.transpose() << "]" << std::endl;
+#endif
    return R;
 }
 
@@ -71,11 +81,14 @@ inline Eigen::VectorXf LineIntegral(const Vector& A, const Vector& B,
                                     const Vector& w, int n) {
    auto wDotA = Vector::Dot(A, w);
    auto wDotB = Vector::Dot(B, w);
-   if(n < 0 || (wDotA == 0.0f && wDotB == 0.0f)) {
+   // Zeroth moment and orthogonal directions 'w' to the while edge do not
+   // require this part since it will always return '0';
+   if(wDotA == 0.0f && wDotB == 0.0f) {
       return Eigen::VectorXf::Zero(n+2);
    }
 
-   // Need check: expanding the (I-ssT)B expression from Arvo's LineIntegral
+   // Note: expanding the (I-ssT)B expression from Arvo's LineIntegral pseudo
+   // code to the projection of B on plane with A as normal.
    auto s = Vector::Normalize(A);
    auto t = Vector::Normalize(B - Vector::Dot(s, B)*s);
 
@@ -83,9 +96,12 @@ inline Eigen::VectorXf LineIntegral(const Vector& A, const Vector& B,
    auto b = Vector::Dot(w, t);
    auto c = sqrt(a*a + b*b);
 
-   auto l = acos(Vector::Dot(A, B) / (Vector::Dot(A,A)*Vector::Dot(B,B)));
-   auto p = sign(b) * acos(clamp<float>(a / c, -1.0f, 1.0f));
-
+   // Compute the arc-length on which to compute the integral of the moment
+   // function and the shift 'p' that change the integral to the integral of
+   // a shifted cosine.
+   auto l = acos(Vector::Dot(s, B) / Vector::Dot(B,B));
+   auto p = atan2(b, a);
+   
    return CosSumIntegral(-p, l-p, c, n);
 }
 
@@ -107,8 +123,14 @@ inline Eigen::VectorXf BoundaryIntegral(const Polygon& P, const Vector& w,
       auto normal = Vector::Normalize(Vector::Cross(edge.A, edge.B));
       // Add the egde integral to the total integral
       b += Vector::Dot(normal, v) * LineIntegral<Vector>(edge.A, edge.B, w, n);
+#ifdef VERBOSE
+      std::cout << "cosNV = " << Vector::Dot(normal, v) << std::endl;
+#endif
    }
 
+#ifdef VERBOSE
+   std::cout << "b = [" << b.transpose() << "]" << std::endl;
+#endif
    return b;
 }
 
