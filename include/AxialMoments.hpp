@@ -1,3 +1,5 @@
+#pragma once
+
 // Eigen includes
 #include <Eigen/Core>
 #include <iostream>
@@ -17,9 +19,9 @@ inline Eigen::VectorXf CosSumIntegral(float x, float y, float c, int n) {
 	const float cosy2 = cosy*cosy;
 	const float cosx2 = cosx*cosx;
 
-   static const Eigen::Vector2f i1 = {1.0f, 1.0f};
-   static const Eigen::Vector2f i2 = {2.0f, 2.0f};
-   Eigen::Vector2f i = {0.0f, 1.0f};
+   static const Eigen::Vector2i i1 = {1, 1};
+   static const Eigen::Vector2i i2 = {2, 2};
+   Eigen::Vector2i i = {0, 1};
    Eigen::Vector2f F = {y-x, siny-sinx};
    Eigen::Vector2f S = {0.0f, 0.0f};
 
@@ -29,16 +31,14 @@ inline Eigen::VectorXf CosSumIntegral(float x, float y, float c, int n) {
    Eigen::Vector2f pow_cosx = {cosy, cosy2};
    Eigen::Vector2f pow_cosy = {cosx, cosx2};
 
-   int index = 0;
-   while(index <= n) {
+   while(i[1] <= n) {
       S += pow_c.cwiseProduct(F);
-      R.segment(index+1, 2) = S;
+      R.segment(i[1], 2) = S;
 
       auto T = pow_cosy*siny - pow_cosx*sinx;
-      F = (T + (i+i1).cwiseProduct(F)).cwiseQuotient(i+i2);
+      F = (T + (i+i1).cast<float>().cwiseProduct(F)).cwiseQuotient((i+i2).cast<float>());
 
       // Update temp variable
-      index    += 2;
       i        += i2;
       pow_c    *= c*c;
       pow_cosx *= cosx2;
@@ -127,6 +127,7 @@ inline float SolidAngle(const Polygon& P) {
              acos(Vector::Dot(ac, bc)) - M_PI;
 
    } else {
+      assert(false);
       return 0.0f;
    }
 }
@@ -146,8 +147,11 @@ inline float SolidAngle(const Polygon& P) {
 template<class Polygon, class Vector>
 inline Eigen::VectorXf AxialMoment(const Polygon& P, const Vector& w, int n) {
 
+   if(n % 2 == 0)
+      n = n + 1;
+
    // Arvo's boundary integral for single vector moment.
-   Eigen::VectorXf a = BoundaryIntegral<Polygon, Vector>(P, w, w, n-1);
+   Eigen::VectorXf a = - BoundaryIntegral<Polygon, Vector>(P, w, w, n-1);
 
    // Generate the 'b' vector which equals to the Polygon solid angle for 
    // even moments and zero for odd moments.

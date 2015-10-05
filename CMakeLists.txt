@@ -5,8 +5,11 @@ set(CMAKE_BUILD_TYPE DEBUG)
 
 include_directories ("include" "externals/Eigen" "externals/glm")
 
-add_executable (Test tests/TestMoments.cpp)
-target_compile_features(Test PRIVATE cxx_range_for)
+add_executable (TestMnVsMC tests/MomentsVsMC.cpp)
+add_executable (TestMnSign tests/MomentsSign.cpp)
+target_compile_features(TestMnVsMC PRIVATE cxx_range_for)
+target_compile_features(TestMnSign PRIVATE cxx_range_for)
 
 enable_testing()
-add_test(MomentsTest Test)
+add_test(MomentsTest TestMnVsMC)
+add_test(MomentsTest TestMnSign)
