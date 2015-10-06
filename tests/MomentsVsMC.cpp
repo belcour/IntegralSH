@@ -28,6 +28,9 @@ glm::vec3 Sample() {
 }
 
 // Sample a spherical triangle using Arvo's stratified method.
+// Note: This code is not reliable right now. An error in the computation of the
+// solid angle bias the distribution of points. Use the uniform sampling method
+// instead.
 glm::vec3 SampleSphericalTriangle(const Triangle& triangle, float& pdf) {
    const glm::vec3& A = triangle[0].A;
    const glm::vec3& B = triangle[1].A;
@@ -109,7 +112,7 @@ bool HitTriangle(const Triangle& triangle, const Vector& w) {
    return false;
 }
 
-#define USE_TRIANGLE_SAMPLING
+//#define USE_TRIANGLE_SAMPLING
 
 float MonteCarloMoments(const Triangle& triangle, const Vector& w, int n) {
 
@@ -230,6 +233,7 @@ int main(int argc, char** argv) {
    glm::vec3 A, B, C, w;
    Triangle tri;
 
+
    /* Check the solid angle */
 
    A = glm::vec3( 0.5,-0.5, 1.0);
@@ -310,8 +314,10 @@ int main(int argc, char** argv) {
    C = glm::vec3( 0.0, 0.5, 1.0);
    tri = Triangle(glm::normalize(A), glm::normalize(B), glm::normalize(C));
 
-   w = glm::normalize(glm::vec3(2.0f*(dist(gen) - 0.5f), 2.0f*(dist(gen) - 0.5f), 2.0f*(dist(gen) - 0.5f)));
-   nb_fails += TestMoments(w, tri, nMin, nMax, Epsilon);
+   for(int nb_rand=0; nb_rand<10; ++nb_rand) {
+      w = glm::normalize(glm::vec3(2.0f*(dist(gen) - 0.5f), 2.0f*(dist(gen) - 0.5f), 2.0f*(dist(gen) - 0.5f)));
+      nb_fails += TestMoments(w, tri, nMin, nMax, Epsilon);
+   }
 
    if(nb_fails == 0)
       return EXIT_SUCCESS;
