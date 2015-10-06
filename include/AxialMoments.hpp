@@ -29,8 +29,8 @@ inline Eigen::VectorXf CosSumIntegral(float x, float y, float c, int n) {
    Eigen::VectorXf R = Eigen::VectorXf::Zero(n+2);
 
    Eigen::Vector2f pow_c    = {1.0, c};
-   Eigen::Vector2f pow_cosx = {cosy, cosy2};
-   Eigen::Vector2f pow_cosy = {cosx, cosx2};
+   Eigen::Vector2f pow_cosx = {cosx, cosx2};
+   Eigen::Vector2f pow_cosy = {cosy, cosy2};
 
    while(i[1] <= n) {
       // S <= S + c^{i} F
@@ -84,7 +84,7 @@ inline T clamp(T val, T a, T b) {
 template<class Vector>
 inline Eigen::VectorXf LineIntegral(const Vector& A, const Vector& B,
                                     const Vector& w, int n) {
-#ifndef ZERO_ORTHOGONAL
+#ifdef ZERO_ORTHOGONAL
    auto wDotA = Vector::Dot(A, w);
    auto wDotB = Vector::Dot(B, w);
    // Zeroth moment and orthogonal directions 'w' to the while edge do not
@@ -212,7 +212,7 @@ inline bool CheckPolygon(const Poylgon& P) {
 template<class Polygon, class Vector>
 inline Eigen::VectorXf AxialMoment(const Polygon& P, const Vector& w, int n) {
 
-#ifndef CHECK_ORIENTATION
+#ifdef CHECK_ORIENTATION
    // Check if the polygon is well oriented
    const bool check = CheckPolygon<Polygon, Vector>(P);
    assert(check);

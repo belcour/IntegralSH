@@ -125,6 +125,19 @@ int main(int argc, char** argv) {
    w = glm::normalize(glm::vec3(1, 1, 1));
    nb_fails += TestMoments(w, tri, nMin, nMax, Epsilon);
 
+   // Integrate a full quadrant, but reverse the orientation of the triangle
+   nMax = 10;
+   A = glm::vec3(0.0, 0.0, 1.0);
+   B = glm::vec3(1.0, 0.0, 0.0);
+   C = glm::vec3(0.0, 1.0, 0.0);
+   tri = Triangle(glm::normalize(A), glm::normalize(B), glm::normalize(C));
+
+   w = glm::normalize(glm::vec3(0, 0, 1));
+   nb_fails += TestMoments(w, tri, nMin, nMax, Epsilon);
+
+   w = glm::normalize(glm::vec3(1, 1, 1));
+   nb_fails += TestMoments(w, tri, nMin, nMax, Epsilon);
+
    if(nb_fails == 0)
       return EXIT_SUCCESS;
    else
