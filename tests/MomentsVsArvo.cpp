@@ -9,6 +9,39 @@
 #include <iostream>
 #include <vector>
 
+int TestSolidAngle(const Triangle& tri, float Epsilon = 1.0E-5) {
+
+   std::cout << "Triangle set using:" << std::endl;
+   std::cout << " + A = : " << tri[0].A << std::endl;
+   std::cout << " + B = : " << tri[1].A << std::endl;
+   std::cout << " + C = : " << tri[2].A << std::endl;
+   std::cout << std::endl;
+
+   // Track the number of failed tests
+   int nb_fails = 0;
+
+   auto analytical = SolidAngle<Triangle, Vector>(tri);
+   std::cout << "Analytical solid angle : " << analytical << std::endl;
+
+   float tri_array[9] = {tri[0].A.x, tri[0].A.y, tri[0].A.z,
+                         tri[1].A.x, tri[1].A.y, tri[1].A.z,
+                         tri[2].A.x, tri[2].A.y, tri[2].A.z };
+
+   auto arvo = TriangleSolidAngle(&tri_array[0], &tri_array[3], &tri_array[6]);
+   std::cout << "Arvo's solid angle : " << arvo << std::endl;
+
+   if(std::abs(analytical - arvo) > Epsilon*std::abs(analytical) ||
+      std::isnan(analytical)) {
+      std::cerr << "Error: solid angle differs from Arvo's!" << std::endl;
+      std::cerr << "       error is = " << std::abs(analytical - arvo) << std::endl;
+      ++nb_fails;
+   }
+
+   std::cout << std::endl;
+
+   return nb_fails;
+}
+
 int TestMoments(const glm::vec3& w, const Triangle& tri,
                 int nMin, int nMax,
                 float Epsilon = 1.0E-5) {
@@ -64,11 +97,23 @@ int main(int argc, char** argv) {
    glm::vec3 A, B, C, w;
    Triangle tri;
 
+
+   /* Check the computation of the solid angle */
+
+   A = glm::vec3( 0.5,-0.5, 1.0);
+   B = glm::vec3(-0.5,-0.5, 1.0);
+   C = glm::vec3( 0.0, 0.5, 1.0);
+   tri = Triangle(glm::normalize(A), glm::normalize(B), glm::normalize(C));
+   nb_fails += TestSolidAngle(tri, Epsilon);
+
    // Shfited triangle on the right upper quadrant
    A = glm::vec3(Eps, Eps, 1.0);
    B = glm::vec3(Eps, 0.5, 1.0);
    C = glm::vec3(0.5, Eps, 1.0);
    tri = Triangle(glm::normalize(A), glm::normalize(B), glm::normalize(C));
+   nb_fails += TestSolidAngle(tri, Epsilon);
+
+   /* Moment computation comparison */
 
    // Change the moments' axis
    w = glm::normalize(glm::vec3(0, 0, 1));
@@ -117,19 +162,6 @@ int main(int argc, char** argv) {
    A = glm::vec3(0.0, 0.0, 1.0);
    B = glm::vec3(0.0, 1.0, 0.0);
    C = glm::vec3(1.0, 0.0, 0.0);
-   tri = Triangle(glm::normalize(A), glm::normalize(B), glm::normalize(C));
-
-   w = glm::normalize(glm::vec3(0, 0, 1));
-   nb_fails += TestMoments(w, tri, nMin, nMax, Epsilon);
-
-   w = glm::normalize(glm::vec3(1, 1, 1));
-   nb_fails += TestMoments(w, tri, nMin, nMax, Epsilon);
-
-   // Integrate a full quadrant, but reverse the orientation of the triangle
-   nMax = 10;
-   A = glm::vec3(0.0, 0.0, 1.0);
-   B = glm::vec3(1.0, 0.0, 0.0);
-   C = glm::vec3(0.0, 1.0, 0.0);
    tri = Triangle(glm::normalize(A), glm::normalize(B), glm::normalize(C));
 
    w = glm::normalize(glm::vec3(0, 0, 1));

@@ -36,6 +36,10 @@ struct Vector : public glm::vec3 {
    static inline glm::vec3 Normalize(const glm::vec3& a) {
       return glm::normalize(a);
    }
+
+   static inline float Length(const glm::vec3& a) {
+      return glm::length(a);
+   }
 };
 
 std::ostream& operator<< (std::ostream& out, const glm::vec3& a) {

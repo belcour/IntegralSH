@@ -109,14 +109,21 @@ bool HitTriangle(const Triangle& triangle, const Vector& w) {
    return false;
 }
 
+#define USE_TRIANGLE_SAMPLING
+
 float MonteCarloMoments(const Triangle& triangle, const Vector& w, int n) {
 
    // Number of MC samples
-   const int M = 100000;
+   const int M = 10000000;
    float val = 0.0f;
    for(int k=0; k<M; ++k) {
+#ifdef USE_TRIANGLE_SAMPLING
       float pdf;
       glm::vec3 d = SampleSphericalTriangle(triangle, pdf);
+#else // UNIFORM SAMPLING
+      float pdf = 1.0f / (4.0f*M_PI);
+      glm::vec3 d = Sample();
+#endif
 
       if(HitTriangle(triangle, d)) {
          val += pow(glm::dot(d, w), n) / pdf;
@@ -164,6 +171,53 @@ int TestMoments(const glm::vec3& w, const Triangle& tri,
    return nb_fails;
 }
 
+float MonteCarloSolidAngle(const Triangle& triangle) {
+
+   // Number of MC samples
+   const int M = 10000000;
+   float val = 0.0f;
+   for(int k=0; k<M; ++k) {
+
+      // Sample a direction on the sphere
+      glm::vec3 d = Sample();
+
+      if(HitTriangle(triangle, d)) {
+         val += 1.0f;
+      }
+
+   }
+   return 4.0f*M_PI *val / M;
+}
+
+int TestSolidAngle(const Triangle& tri, float Epsilon = 1.0E-5) {
+
+   std::cout << "Triangle set using:" << std::endl;
+   std::cout << " + A = : " << tri[0].A << std::endl;
+   std::cout << " + B = : " << tri[1].A << std::endl;
+   std::cout << " + C = : " << tri[2].A << std::endl;
+   std::cout << std::endl;
+
+   // Track the number of failed tests
+   int nb_fails = 0;
+
+   auto analytical = SolidAngle<Triangle, Vector>(tri);
+   std::cout << "Analytical solid angle : " << analytical << std::endl;
+
+   auto mc = MonteCarloSolidAngle(tri);
+   std::cout << "MC solid angle : " << mc << std::endl;
+
+   if(std::abs(analytical - mc) > Epsilon*std::abs(analytical) ||
+      std::isnan(analytical)) {
+      std::cerr << "Error: solid angle differs from MC!" << std::endl;
+      std::cerr << "       error is = " << std::abs(analytical - mc) << std::endl;
+      ++nb_fails;
+   }
+
+   std::cout << std::endl;
+
+   return nb_fails;
+}
+
 int main(int argc, char** argv) {
 
    // Track the number of failed tests
@@ -175,6 +229,18 @@ int main(int argc, char** argv) {
    // Generate a triangle + lobe direction configuration
    glm::vec3 A, B, C, w;
    Triangle tri;
+
+   /* Check the solid angle */
+
+   A = glm::vec3( 0.5,-0.5, 1.0);
+   B = glm::vec3(-0.5,-0.5, 1.0);
+   C = glm::vec3( 0.0, 0.5, 1.0);
+   tri = Triangle(glm::normalize(A), glm::normalize(B), glm::normalize(C));
+
+   nb_fails += TestSolidAngle(tri, Epsilon);
+
+
+   /* Check the moments */
 
    // Shfited triangle on the right upper quadrant
    A = glm::vec3(Eps, Eps, 1.0);
@@ -235,6 +301,16 @@ int main(int argc, char** argv) {
    nb_fails += TestMoments(w, tri, nMin, nMax, Epsilon);
 
    w = glm::normalize(glm::vec3(1, 1, 1));
+   nb_fails += TestMoments(w, tri, nMin, nMax, Epsilon);
+
+   // Add random direction with a small triangle with centroid being
+   // the z-vector.
+   A = glm::vec3( 0.5,-0.5, 1.0);
+   B = glm::vec3(-0.5,-0.5, 1.0);
+   C = glm::vec3( 0.0, 0.5, 1.0);
+   tri = Triangle(glm::normalize(A), glm::normalize(B), glm::normalize(C));
+
+   w = glm::normalize(glm::vec3(2.0f*(dist(gen) - 0.5f), 2.0f*(dist(gen) - 0.5f), 2.0f*(dist(gen) - 0.5f)));
    nb_fails += TestMoments(w, tri, nMin, nMax, Epsilon);
 
    if(nb_fails == 0)

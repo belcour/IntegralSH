@@ -162,6 +162,9 @@ inline float SolidAngle(const Polygon& P) {
       const Vector& B = P[1].A;
       const Vector& C = P[2].A;
 
+      // Note: This version of the code is buggy, and I cannot figure out why.
+      // so I prefer to use the alternate method of Oosterom and Strackee [1983]
+#ifdef ARVO_SOLID_ANGLE
       const Vector ab = Vector::Normalize(Vector::Cross(A, B));
       const Vector ac = Vector::Normalize(Vector::Cross(A, C));
       const Vector ba = Vector::Normalize(Vector::Cross(B, A));
@@ -170,6 +173,25 @@ inline float SolidAngle(const Polygon& P) {
       return acos(Vector::Dot(ba, ac)) +
              acos(Vector::Dot(cb, ab)) +
              acos(Vector::Dot(ac, bc)) - M_PI;
+
+#else // OOSTEROM_STRACKEE
+      const Vector bc = Vector::Cross(B,C);
+      const float num = std::abs(Vector::Dot(bc, A));
+      const float al = Vector::Length(A);
+      const float bl = Vector::Length(B);
+      const float cl = Vector::Length(C);
+      const float den = al*bl*cl
+                      + Vector::Dot(A, B)*cl
+                      + Vector::Dot(A, C)*bl
+                      + Vector::Dot(B, C)*al;
+
+      float phi = atan2(num, den);
+      if(phi < 0) {
+         phi += M_PI;
+      }
+      return 2.0f * phi;
+
+#endif
 
    } else {
       assert(false);
@@ -212,7 +234,7 @@ inline bool CheckPolygon(const Poylgon& P) {
 template<class Polygon, class Vector>
 inline Eigen::VectorXf AxialMoment(const Polygon& P, const Vector& w, int n) {
 
-#ifdef CHECK_ORIENTATION
+#ifndef CHECK_ORIENTATION
    // Check if the polygon is well oriented
    const bool check = CheckPolygon<Polygon, Vector>(P);
    assert(check);
