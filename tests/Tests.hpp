@@ -12,6 +12,8 @@ struct Edge {
 };
 
 struct Triangle : public std::vector<Edge> {
+   Triangle() {
+   }
    Triangle(const glm::vec3& A, const glm::vec3& B, const glm::vec3& C) {
      this->push_back(Edge(A, B));
      this->push_back(Edge(B, C));

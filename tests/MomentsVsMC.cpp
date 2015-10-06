@@ -110,7 +110,7 @@ bool HitTriangle(const Triangle& triangle, const Vector& w) {
 }
 
 float MonteCarloMoments(const Triangle& triangle, const Vector& w, int n) {
-    
+
    // Number of MC samples
    const int M = 100000;
    float val = 0.0f;
@@ -126,10 +126,10 @@ float MonteCarloMoments(const Triangle& triangle, const Vector& w, int n) {
    return val / M;
 }
 
-int TestMoments(const glm::vec3& w, const Triangle& tri, 
+int TestMoments(const glm::vec3& w, const Triangle& tri,
                 int nMin, int nMax,
                 float Epsilon = 1.0E-5) {
-   
+
    std::cout << "Triangle set using:" << std::endl;
    std::cout << " + A = : " << tri[0].A << std::endl;
    std::cout << " + B = : " << tri[1].A << std::endl;
@@ -165,25 +165,27 @@ int TestMoments(const glm::vec3& w, const Triangle& tri,
 }
 
 int main(int argc, char** argv) {
-   
+
    // Track the number of failed tests
    float Eps = 1.0E-5, Epsilon = 1.0E-2;
    int nMin = 0, nMax = 10;
    int nb_fails = 0;
- 
+
 
    // Generate a triangle + lobe direction configuration
-   glm::vec3 A, B, C;
+   glm::vec3 A, B, C, w;
+   Triangle tri;
+
+   // Shfited triangle on the right upper quadrant
    A = glm::vec3(Eps, Eps, 1.0);
    B = glm::vec3(Eps, 0.5, 1.0);
    C = glm::vec3(0.5, Eps, 1.0);
-   Triangle  tri(glm::normalize(A), glm::normalize(B), glm::normalize(C));
-   glm::vec3 w;
-   
-   // Change the moments' axis 
+   tri = Triangle(glm::normalize(A), glm::normalize(B), glm::normalize(C));
+
+   // Change the moments' axis
    w = glm::normalize(glm::vec3(0, 0, 1));
    nb_fails += TestMoments(w, tri, nMin, nMax, Epsilon);
-   
+
    w = glm::normalize(glm::vec3(0, 0, -1));
    nb_fails += TestMoments(w, tri, nMin, nMax, Epsilon);
 
@@ -206,6 +208,33 @@ int main(int argc, char** argv) {
    C = glm::vec3(0.01, 0.00, 1.0);
    tri = Triangle(glm::normalize(A), glm::normalize(B), glm::normalize(C));
    w = glm::normalize(glm::vec3(0.05,0.05,1));
+   nb_fails += TestMoments(w, tri, nMin, nMax, Epsilon);
+
+   // Check the case where Nmax is odd
+   nMax = 11;
+   A = glm::vec3(Eps, Eps, 1.0);
+   B = glm::vec3(Eps, 0.5, 1.0);
+   C = glm::vec3(0.5, Eps, 1.0);
+   tri = Triangle(glm::normalize(A), glm::normalize(B), glm::normalize(C));
+
+   // Change the moments' axis
+   w = glm::normalize(glm::vec3(0, 0, 1));
+   nb_fails += TestMoments(w, tri, nMin, nMax, Epsilon);
+
+   w = glm::normalize(glm::vec3(0, 0, -1));
+   nb_fails += TestMoments(w, tri, nMin, nMax, Epsilon);
+
+   // Integrate a full quadrant
+   nMax = 10;
+   A = glm::vec3(0.0, 0.0, 1.0);
+   B = glm::vec3(0.0, 1.0, 0.0);
+   C = glm::vec3(1.0, 0.0, 0.0);
+   tri = Triangle(glm::normalize(A), glm::normalize(B), glm::normalize(C));
+
+   w = glm::normalize(glm::vec3(0, 0, 1));
+   nb_fails += TestMoments(w, tri, nMin, nMax, Epsilon);
+
+   w = glm::normalize(glm::vec3(1, 1, 1));
    nb_fails += TestMoments(w, tri, nMin, nMax, Epsilon);
 
    if(nb_fails == 0)

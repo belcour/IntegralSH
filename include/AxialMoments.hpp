@@ -2,7 +2,12 @@
 
 // Eigen includes
 #include <Eigen/Core>
+
+// STL includes
 #include <iostream>
+#include <cassert>
+
+#define AXIAL_EPSILON 1.0E-6
 
 /* _Cosine Sum Integral_
  */
@@ -30,7 +35,7 @@ inline Eigen::VectorXf CosSumIntegral(float x, float y, float c, int n) {
    while(i[1] <= n) {
       // S <= S + c^{i} F
       S += pow_c.cwiseProduct(F);
-      
+
       // The resulting vector `R` is shifted of one to the right. This is due to
       // the fact that order `n` moment requires only up to order `n-1` power of
       // cosine integrals.
@@ -79,13 +84,15 @@ inline T clamp(T val, T a, T b) {
 template<class Vector>
 inline Eigen::VectorXf LineIntegral(const Vector& A, const Vector& B,
                                     const Vector& w, int n) {
+#ifndef ZERO_ORTHOGONAL
    auto wDotA = Vector::Dot(A, w);
    auto wDotB = Vector::Dot(B, w);
    // Zeroth moment and orthogonal directions 'w' to the while edge do not
    // require this part since it will always return '0';
-   if(wDotA == 0.0f && wDotB == 0.0f) {
+   if(std::abs(wDotA) < AXIAL_EPSILON && std::abs(wDotB) < AXIAL_EPSILON) {
       return Eigen::VectorXf::Zero(n+2);
    }
+#endif
 
    // Note: expanding the (I-ssT)B expression from Arvo's LineIntegral pseudo
    // code to the projection of B on plane with A as normal.
@@ -100,8 +107,12 @@ inline Eigen::VectorXf LineIntegral(const Vector& A, const Vector& B,
    // function and the shift 'p' that change the integral to the integral of
    // a shifted cosine.
    auto l = acos(Vector::Dot(s, B) / Vector::Dot(B,B));
+#ifndef OPTIM
    auto p = atan2(b, a);
-   
+#else
+   auto p = sign(b) * acos(a / c);
+#endif
+
    return CosSumIntegral(-p, l-p, c, n);
 }
 
@@ -121,10 +132,14 @@ inline Eigen::VectorXf BoundaryIntegral(const Polygon& P, const Vector& w,
    for(auto edge : P) {
       // Compute the edge normal
       auto normal = Vector::Normalize(Vector::Cross(edge.A, edge.B));
+
       // Add the egde integral to the total integral
-      b += Vector::Dot(normal, v) * LineIntegral<Vector>(edge.A, edge.B, w, n);
+      const auto dotNV   = Vector::Dot(normal, v);
+      const auto lineInt = LineIntegral<Vector>(edge.A, edge.B, w, n);
+      b += dotNV * lineInt;
 #ifdef VERBOSE
-      std::cout << "cosNV = " << Vector::Dot(normal, v) << std::endl;
+      std::cout << "cosNV   = "  << Vector::Dot(normal, v) << std::endl;
+      std::cout << "LineInt = [" << lineInt.transpose() << "]" << std::endl;
 #endif
    }
 
@@ -162,6 +177,26 @@ inline float SolidAngle(const Polygon& P) {
    }
 }
 
+/* _Check Polygon_
+ *
+ * Check if the Poylgon P is well oriented. For a triangle, the centroid of the
+ * triangle `D` is computed as `A + B + C / 3` and compared to the normal of
+ * the triangle using the orientation. The normal and the centroid must match
+ * orientation for the normal of edges to be outwards.
+ */
+template<class Poylgon, class Vector>
+inline bool CheckPolygon(const Poylgon& P) {
+   if(P.size() == 3) {
+      const auto D = (P[0].A + P[1].A + P[2].A) / 3.0f;
+      const auto N = Vector::Cross(P[1].A-P[0].A, P[2].A-P[0].A);
+      return Vector::Dot(D, N) <= 0.0f;
+   } else {
+      assert(false);
+      return false;
+   }
+}
+
+
 /* _Axial Moments_
  *
  * input:
@@ -177,20 +212,23 @@ inline float SolidAngle(const Polygon& P) {
 template<class Polygon, class Vector>
 inline Eigen::VectorXf AxialMoment(const Polygon& P, const Vector& w, int n) {
 
-   if(n % 2 == 0)
-      n = n + 1;
+#ifndef CHECK_ORIENTATION
+   // Check if the polygon is well oriented
+   const bool check = CheckPolygon<Polygon, Vector>(P);
+   assert(check);
+#endif
 
    // Arvo's boundary integral for single vector moment.
-   Eigen::VectorXf a = - BoundaryIntegral<Polygon, Vector>(P, w, w, n-1);
+   Eigen::VectorXf a = - BoundaryIntegral<Polygon, Vector>(P, w, w, n);
 
-   // Generate the 'b' vector which equals to the Polygon solid angle for 
+   // Generate the 'b' vector which equals to the Polygon solid angle for
    // even moments and zero for odd moments.
-   const int n2 = (n+1)/2;
-   auto b = Eigen::Map<Eigen::VectorXf, 0, Eigen::InnerStride<2>>(a.data(), n2); 
+   const int n2 = (n+2)/2;
+   auto b = Eigen::Map<Eigen::VectorXf, 0, Eigen::InnerStride<2>>(a.data(), n2);
    b += Eigen::VectorXf::Constant(n2, SolidAngle<Polygon, Vector>(P));
 
    // 'c' is the vector of linear elements, storing 'i+1' for index 'i'
-   auto c = Eigen::VectorXf::LinSpaced(n+1, 1, n+1);
+   auto c = Eigen::VectorXf::LinSpaced(n+2, 1, n+2);
 
    return a.cwiseQuotient(c);
 }

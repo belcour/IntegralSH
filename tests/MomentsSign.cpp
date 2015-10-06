@@ -93,7 +93,7 @@ int CheckAlternate(const glm::vec3& w, const Triangle& tri,
 
 int main(int argc, char** argv) {
 
-   const float Eps = 1.0E-5;
+   const float Eps = 0.0f;
 
    glm::vec3 A, B, C;
    A = glm::vec3(Eps, Eps, 1.0);
@@ -106,18 +106,30 @@ int main(int argc, char** argv) {
    int nMin = 0, nMax = 10;
    int nb_fails = 0;
  
+#ifdef ONLY_CHECK
    // Change the moments' axis
    w = glm::normalize(glm::vec3(0, 0, 1));
    nb_fails += CheckPositive(w, tri, nMin, nMax);
    
    w = glm::normalize(glm::vec3(0, 0, -1));
    nb_fails += CheckAlternate(w, tri, nMin, nMax);
-    
+#endif
+
    w = glm::normalize(glm::vec3(1, 0, 0));
    nb_fails += CheckPositive(w, tri, nMin, nMax);
 
+#ifdef ONLY_CHECK
    w = glm::normalize(glm::vec3(-1, 0, 0));
    nb_fails += CheckAlternate(w, tri, nMin, nMax);
+#endif
+
+   // Alternate triangle configuration
+   A = glm::vec3(0.0, 0.0, 1.0);
+   B = glm::vec3(0.0, 1.0, 0.0);
+   C = glm::vec3(1.0, 0.0, 0.0);
+   tri = Triangle(glm::normalize(A), glm::normalize(B), glm::normalize(C));
+   w = glm::normalize(glm::vec3(1, 0, 0));
+   nb_fails += CheckPositive(w, tri, nMin, nMax);
 
    if(nb_fails == 0)
       return EXIT_SUCCESS;
