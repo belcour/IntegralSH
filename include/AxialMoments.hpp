@@ -53,9 +53,6 @@ inline Eigen::VectorXf CosSumIntegral(float x, float y, float c, int n) {
       pow_cosy *= cosy2;
    }
 
-#ifdef VERBOSE
-   std::cout << "R = [" << R.transpose() << "]" << std::endl;
-#endif
    return R;
 }
 
@@ -107,11 +104,7 @@ inline Eigen::VectorXf LineIntegral(const Vector& A, const Vector& B,
    // function and the shift 'p' that change the integral to the integral of
    // a shifted cosine.
    auto l = acos(Vector::Dot(s, B) / Vector::Dot(B,B));
-#ifndef OPTIM
    auto p = atan2(b, a);
-#else
-   auto p = sign(b) * acos(a / c);
-#endif
 
    return CosSumIntegral(-p, l-p, c, n);
 }
@@ -137,15 +130,8 @@ inline Eigen::VectorXf BoundaryIntegral(const Polygon& P, const Vector& w,
       const auto dotNV   = Vector::Dot(normal, v);
       const auto lineInt = LineIntegral<Vector>(edge.A, edge.B, w, n);
       b += dotNV * lineInt;
-#ifdef VERBOSE
-      std::cout << "cosNV   = "  << Vector::Dot(normal, v) << std::endl;
-      std::cout << "LineInt = [" << lineInt.transpose() << "]" << std::endl;
-#endif
    }
 
-#ifdef VERBOSE
-   std::cout << "b = [" << b.transpose() << "]" << std::endl;
-#endif
    return b;
 }
 
@@ -218,6 +204,7 @@ inline bool CheckPolygon(const Poylgon& P) {
    }
 }
 
+#define CHECK_ORIENTATION
 
 /* _Axial Moments_
  *
@@ -234,7 +221,7 @@ inline bool CheckPolygon(const Poylgon& P) {
 template<class Polygon, class Vector>
 inline Eigen::VectorXf AxialMoment(const Polygon& P, const Vector& w, int n) {
 
-#ifndef CHECK_ORIENTATION
+#ifdef CHECK_ORIENTATION
    // Check if the polygon is well oriented
    const bool check = CheckPolygon<Polygon, Vector>(P);
    assert(check);
