@@ -27,7 +27,7 @@ Eigen::MatrixXf ZonalWeights(int order) {
    W(1,1) = 1.0f;
    for(int n=2; n<order; ++n) {
       const int subsize = n;
-      W.col(n).segment(1, subsize) = (2*n+1) * W.col(n-1).segment(0, subsize);
+      W.col(n).segment(1, subsize) = (2*n-1) * W.col(n-1).segment(0, subsize);
       W.col(n) -= (n-1) * W.col(n-2);
       W.col(n) /= n;
    }
