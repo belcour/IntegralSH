@@ -44,6 +44,7 @@ int CheckLegendreExpansion(float Epsilon = 1.0E-5f) {
 int CheckZHEqualsCosinePower(float Epsilon = 1.0E-5f) {
 
    int nb_fails = 0;
+   std::cout << "Testing if the ZH => Cosine power is correct." << std::endl;
 
    // Values
    const glm::vec3 n(0,0,1);
@@ -78,6 +79,10 @@ int CheckZHEqualsCosinePower(float Epsilon = 1.0E-5f) {
       ++nb_fails;
    }
 
+   if(nb_fails == 0) {
+      std::cout << "Test passed!" << std::endl;
+   }
+   std::cout << std::endl;
    return nb_fails;
 }
 
@@ -145,8 +150,6 @@ int CheckZHExpansion(float Epsilon = 1.0E-5f) {
       }
    }
 
-
-
    std::vector<Vector> directions;
    directions.push_back(glm::vec3(0,0,1));
    directions.push_back(glm::vec3(1,0,0));
@@ -161,6 +164,9 @@ int CheckZHExpansion(float Epsilon = 1.0E-5f) {
       ++nb_fails;
    }
 
+   if(nb_fails == 0) {
+      std::cout << "Test passed!" << std::endl;
+   }
    std::cout << std::endl;
    return nb_fails;
 }
@@ -170,6 +176,7 @@ std::mt19937 gen(0);
 std::uniform_real_distribution<float> dist(0.0,1.0);
 
 int CheckZHDecomposition(const std::vector<Vector>& directions,
+                         const Vector& w = Vector(0,0,1),
                          float Epsilon = 1.0E-5f) {
 
    struct SH {
@@ -195,6 +202,9 @@ int CheckZHDecomposition(const std::vector<Vector>& directions,
    int nb_fails = 0;
    int order    = (directions.size()-1) / 2;
 
+   std::cout << "Testing the conversion ZH <=> SH with an order " << order
+             << " set of directions for w = " << w << std::endl;
+
    auto Y = ZonalExpansion<SH, Vector>(directions);
    auto A = Y.inverse();
 
@@ -202,6 +212,7 @@ int CheckZHDecomposition(const std::vector<Vector>& directions,
    Eigen::FullPivLU<Eigen::MatrixXf> rankComputer(Y);
    const int rank = rankComputer.rank();
    if(rank != SHTerms(order)) {
+      ++nb_fails;
       std::cout <<std::setprecision(5) << std::fixed;
       for(int i=0; i<directions.size(); ++i) {
          std::cout << "w_" << i << " = " << directions[i] << std::endl;
@@ -209,11 +220,6 @@ int CheckZHDecomposition(const std::vector<Vector>& directions,
       std::cout << "Rank of matrix Y = " << rank
                 << " / " << SHTerms(order) << std::endl;
    }
-
-   // Generate a random SH vector and evaluate it with SH and ZH
-   Eigen::VectorXf clm = Eigen::VectorXf::Zero(SHTerms(order));
-   clm[SHIndex(order/2, 0)] = 1.0;
-   auto w = Vector(0,0,1);
 
    // Evaluate the SH function
    const auto ylm = SHEvalFast<Vector>(w, order);
@@ -223,10 +229,22 @@ int CheckZHDecomposition(const std::vector<Vector>& directions,
    auto zlm = ZHEvalFast<Vector>(directions, w);
    //std::cout << clm.dot( A * zlm ) << std::endl;
 
-   const auto ylmFromZml = Y.transpose()*zlm;
+   bool ylmFromZmlFailed = false;
+   bool zlmFromYmlFailed = false;
+
+   const auto ylmFromZml = A*zlm;
    for(int i=0; i<ylm.size(); ++i) {
       if(std::abs(ylm[i] - ylmFromZml[i]) > Epsilon) {
          ++nb_fails;
+         ylmFromZmlFailed = true;
+      }
+   }
+
+   const auto zlmFromYml = Y*ylm;
+   for(int i=0; i<zlm.size(); ++i) {
+      if(std::abs(zlm[i] - zlmFromYml[i]) > Epsilon) {
+         ++nb_fails;
+         zlmFromYmlFailed = true;
       }
    }
 
@@ -242,18 +260,23 @@ int CheckZHDecomposition(const std::vector<Vector>& directions,
       std::cout << std::endl;
 
       std::cout << "ZLm    = " << zlm.transpose() << std::endl;
+      std::cout << "Y *Ylm = " << (Y*ylm).transpose() << std::endl;
+      std::cout << std::end;
       std::cout << "Ylm    = " << ylm.transpose() << std::endl;
-      std::cout << "Y'*Zlm = " << (Y.transpose()*zlm).transpose() << std::endl;
-      std::cout << "Y *Zlm = " << (Y*zlm).transpose() << std::endl;
-      std::cout << std::endl;
-
-      std::cout << "coeffs = " << clm.transpose() << std::endl;
+      std::cout << "A *Zlm = " << (A*zlm).transpose() << std::endl;
       std::cout << std::endl;
 
       std::cout << "Matrix Y:" << std::endl;
       std::cout << Y << std::endl;
+
+      std::cout << "Matrix A:" << std::endl;
+      std::cout << A << std::endl;
    }
 
+   if(nb_fails == 0) {
+      std::cout << "Test passed!" << std::endl;
+   }
+   std::cout << std::endl;
    return nb_fails;
 }
 
@@ -272,12 +295,8 @@ int main(int argc, char** argv) {
    nb_fails += CheckZHExpansion();
 
    /* Check if the Zonal Harmonics expansion and the SH basis match */
-
-   // Using random directions
-   int order = 2;
    std::vector<Vector> directions;
-   directions = SamplingBlueNoise<Vector>(2*order+1);
-   nb_fails += CheckZHDecomposition(directions);
+   int order = 2;
 
    // Using the canonical frame
    directions.clear();
@@ -285,6 +304,18 @@ int main(int argc, char** argv) {
    directions.push_back(glm::normalize(glm::vec3(0,1,0)));
    directions.push_back(glm::normalize(glm::vec3(1,0,0)));
    nb_fails += CheckZHDecomposition(directions);
+
+   // Using random directions
+   directions.clear();
+   directions = SamplingBlueNoise<Vector>(2*order+1);
+   nb_fails += CheckZHDecomposition(directions);
+   nb_fails += CheckZHDecomposition(directions, Vector(1,1,1));
+
+   // Using random directions
+   order = 3;
+   directions.clear();
+   directions = SamplingBlueNoise<Vector>(2*order+1);
+   nb_fails += CheckZHDecomposition(directions, Vector(1,1,1));
 
    if(nb_fails == 0) {
       return EXIT_SUCCESS;
