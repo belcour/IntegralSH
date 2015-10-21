@@ -35,6 +35,8 @@ Eigen::VectorXf SHEvalFast(const Vector& w, int order) {
    const int nb_vals = SHTerms(order);
    auto pOut = Eigen::VectorXf(nb_vals);
 
+   order = order+1;
+
    float fC0,fS0,fC1,fS1,fPa,fPb,fPc;
    if(order == 1) {
       pOut[0] = 0.282094791774;

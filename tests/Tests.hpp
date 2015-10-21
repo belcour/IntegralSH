@@ -23,6 +23,8 @@ struct Triangle : public std::vector<Edge> {
 
 struct Vector : public glm::vec3 {
 
+   Vector() : glm::vec3() {}
+   Vector(float x, float y, float z) : glm::vec3(x, y, z) {}
    Vector(const glm::vec3& w) : glm::vec3(w) {}
 
    static inline float Dot(const glm::vec3& a, const glm::vec3& b) {
