@@ -16,7 +16,7 @@
 /* Check the Lengendre expansion for the first elements in the matrix. This
  * test the init elements and the recursion pattern.
  */
-int CheckLegendreExpansion(float Epsilon = 1.0E-5f) {
+int CheckLegendreExpansion(float Epsilon = 1.0E-3f) {
 
    Eigen::MatrixXf W = ZonalWeights(3);
    Eigen::MatrixXf R (3,3);
@@ -41,7 +41,7 @@ int CheckLegendreExpansion(float Epsilon = 1.0E-5f) {
 /* Check if the ZH expansion and the power of cosines expansion do match against
  * a variety of direction.
  */
-int CheckZHEqualsCosinePower(float Epsilon = 1.0E-5f) {
+int CheckZHEqualsCosinePower(float Epsilon = 1.0E-3f) {
 
    int nb_fails = 0;
    std::cout << "Testing if the ZH => Cosine power is correct." << std::endl;
@@ -86,10 +86,10 @@ int CheckZHEqualsCosinePower(float Epsilon = 1.0E-5f) {
    return nb_fails;
 }
 
-int CheckZHExpansion(float Epsilon = 1.0E-5f) {
+int CheckZHExpansion(float Epsilon = 1.0E-3f) {
 
    int nb_fails = 0;
-   int order    = 5;
+   int order    = 15;
 
    // Check if the ZH expansion correspond to the (l,0) elements in the
    // SH expansion.
@@ -102,7 +102,7 @@ int CheckZHExpansion(float Epsilon = 1.0E-5f) {
    auto zlm = RotatedZH(n, w, order);
    auto ylm = SHEvalFast(w, order);
    for(int l=0; l<order; ++l) {
-      if(std::abs(zlm[l] - ylm[SHIndex(l, 0)]) > Epsilon) {
+      if(! closeTo(zlm[l], ylm[SHIndex(l, 0)])) {
          ++nb_fails;
          std::cout << "Index " << l << " ZH coeff " << zlm[l]
                    << " != " << ylm[SHIndex(l, 0)] << std::endl;
@@ -116,7 +116,7 @@ int CheckZHExpansion(float Epsilon = 1.0E-5f) {
    zlm = RotatedZH(n, w, order);
    ylm = SHEvalFast(w, order);
    for(int l=0; l<order; ++l) {
-      if(std::abs(zlm[l] - ylm[SHIndex(l, 0)]) > Epsilon) {
+      if(! closeTo(zlm[l], ylm[SHIndex(l, 0)])) {
          ++nb_fails;
          std::cout << "Index " << l << " ZH coeff " << zlm[l]
                    << " != " << ylm[SHIndex(l, 0)] << std::endl;
@@ -129,7 +129,7 @@ int CheckZHExpansion(float Epsilon = 1.0E-5f) {
    zlm = RotatedZH(n, w, order);
    ylm = SHEvalFast(w, order);
    for(int l=0; l<order; ++l) {
-      if(std::abs(zlm[l] - ylm[SHIndex(l, 0)]) > Epsilon) {
+      if(! closeTo(zlm[l], ylm[SHIndex(l, 0)])) {
          ++nb_fails;
          std::cout << "Index " << l << " ZH coeff " << zlm[l]
                    << " != " << ylm[SHIndex(l, 0)] << std::endl;
@@ -143,7 +143,7 @@ int CheckZHExpansion(float Epsilon = 1.0E-5f) {
    zlm = RotatedZH(n, w, order);
    ylm = SHEvalFast(w, order);
    for(int l=0; l<order; ++l) {
-      if(std::abs(zlm[l] - ylm[SHIndex(l, 0)]) > Epsilon) {
+      if(! closeTo(zlm[l], ylm[SHIndex(l, 0)])) {
          ++nb_fails;
          std::cout << "Index " << l << " ZH coeff " << zlm[l]
                    << " != " << ylm[SHIndex(l, 0)] << std::endl;
@@ -157,10 +157,10 @@ int CheckZHExpansion(float Epsilon = 1.0E-5f) {
 
    zlm = ZHEvalFast<Vector>(directions, directions[0]);
 
-   if(std::abs(zlm[SHIndex(1,0)]) > Epsilon) {
+   if(! closeTo(zlm[SHIndex(1,0)], 0.0f)) {
       ++nb_fails;
    }
-   if(std::abs(zlm[SHIndex(1,1)]) > Epsilon) {
+   if(! closeTo(zlm[SHIndex(1,1)], 0.0f)) {
       ++nb_fails;
    }
 
@@ -176,8 +176,8 @@ std::mt19937 gen(0);
 std::uniform_real_distribution<float> dist(0.0,1.0);
 
 int CheckZHDecomposition(const std::vector<Vector>& directions,
-                         const Vector& w = Vector(0,0,1),
-                         float Epsilon = 1.0E-5f) {
+                         const std::vector<Vector>& queries,
+                         float Epsilon = 1.0E-3f) {
 
    struct SH {
       // Define the Vector type
@@ -203,7 +203,7 @@ int CheckZHDecomposition(const std::vector<Vector>& directions,
    int order    = (directions.size()-1) / 2;
 
    std::cout << "Testing the conversion ZH <=> SH with an order " << order
-             << " set of directions for w = " << w << std::endl;
+             << " for a set of " << queries.size() << " directions" << std::endl;
 
    auto Y = ZonalExpansion<SH, Vector>(directions);
    auto A = Y.inverse();
@@ -221,56 +221,65 @@ int CheckZHDecomposition(const std::vector<Vector>& directions,
                 << " / " << SHTerms(order) << std::endl;
    }
 
-   // Evaluate the SH function
-   const auto ylm = SHEvalFast<Vector>(w, order);
-   //std::cout << clm.dot(ylm) << std::endl;
+   for(auto& w : queries) {
+      // Evaluate the SH function
+      const auto ylm = SHEvalFast<Vector>(w, order);
 
-   // Evaluate the ZH function
-   auto zlm = ZHEvalFast<Vector>(directions, w);
-   //std::cout << clm.dot( A * zlm ) << std::endl;
+      // Evaluate the ZH function
+      auto zlm = ZHEvalFast<Vector>(directions, w);
 
-   bool ylmFromZmlFailed = false;
-   bool zlmFromYmlFailed = false;
+      bool ylmFromZmlFailed = false;
+      bool zlmFromYmlFailed = false;
 
-   const auto ylmFromZml = A*zlm;
-   for(int i=0; i<ylm.size(); ++i) {
-      if(std::abs(ylm[i] - ylmFromZml[i]) > Epsilon) {
-         ++nb_fails;
-         ylmFromZmlFailed = true;
+      const auto ylmFromZml = A*zlm;
+      for(int i=0; i<ylm.size(); ++i) {
+         //if(std::abs(ylm[i] - ylmFromZml[i]) > Epsilon) {
+         if(! ylm.isApprox(ylmFromZml, Epsilon)) {
+            ++nb_fails;
+            ylmFromZmlFailed = true;
+            std::cout << "Ylm => Zlm failed for coeff " << i << ": "
+                      << ylm[i] << " ≠ " << ylmFromZml[i] << std::endl;
+         }
       }
-   }
 
-   const auto zlmFromYml = Y*ylm;
-   for(int i=0; i<zlm.size(); ++i) {
-      if(std::abs(zlm[i] - zlmFromYml[i]) > Epsilon) {
-         ++nb_fails;
-         zlmFromYmlFailed = true;
+      const auto zlmFromYml = Y*ylm;
+      for(int i=0; i<zlm.size(); ++i) {
+         //if(std::abs(zlm[i] - zlmFromYml[i]) > Epsilon) {
+         if(! zlm.isApprox(zlmFromYml, Epsilon)) {
+            ++nb_fails;
+            zlmFromYmlFailed = true;
+            std::cout << "Zlm => Ylm failed for coeff " << i << ": "
+                      << zlm[i] << " ≠ " << zlmFromYml[i] << std::endl;
+         }
       }
-   }
 
-   if(nb_fails > 0) {
-      std::cout <<std::setprecision(5) << std::fixed;
-      std::cout << "Error, the conversion Zlm => Ylm failed" << std::endl;
-      std::cout << std::endl;
+      if(zlmFromYmlFailed || ylmFromZmlFailed) {
+         std::cout <<std::setprecision(5) << std::fixed;
+         std::cout << "Error, the conversion Ylm <=> Zlm failed for  direction w = "
+                   << w << std::endl;
+         std::cout << std::endl;
 
-      std::cout << "Set of directions:" << std::endl;
-      for(int i=0; i<directions.size(); ++i) {
-         std::cout << "w_" << i << " = " << directions[i] << std::endl;
+#ifdef FULL_DEBUG
+         std::cout << "Set of directions:" << std::endl;
+         for(int i=0; i<directions.size(); ++i) {
+            std::cout << "w_" << i << " = " << directions[i] << std::endl;
+         }
+         std::cout << std::endl;
+
+         std::cout << "ZLm    = " << zlm.transpose() << std::endl;
+         std::cout << "Y *Ylm = " << (Y*ylm).transpose() << std::endl;
+         std::cout << std::endl;
+         std::cout << "Ylm    = " << ylm.transpose() << std::endl;
+         std::cout << "A *Zlm = " << (A*zlm).transpose() << std::endl;
+         std::cout << std::endl;
+
+         std::cout << "Matrix Y:" << std::endl;
+         std::cout << Y << std::endl;
+
+         std::cout << "Matrix A:" << std::endl;
+         std::cout << A << std::endl;
+#endif
       }
-      std::cout << std::endl;
-
-      std::cout << "ZLm    = " << zlm.transpose() << std::endl;
-      std::cout << "Y *Ylm = " << (Y*ylm).transpose() << std::endl;
-      std::cout << std::end;
-      std::cout << "Ylm    = " << ylm.transpose() << std::endl;
-      std::cout << "A *Zlm = " << (A*zlm).transpose() << std::endl;
-      std::cout << std::endl;
-
-      std::cout << "Matrix Y:" << std::endl;
-      std::cout << Y << std::endl;
-
-      std::cout << "Matrix A:" << std::endl;
-      std::cout << A << std::endl;
    }
 
    if(nb_fails == 0) {
@@ -295,27 +304,34 @@ int main(int argc, char** argv) {
    nb_fails += CheckZHExpansion();
 
    /* Check if the Zonal Harmonics expansion and the SH basis match */
-   std::vector<Vector> directions;
+   std::vector<Vector> basis;
+   std::vector<Vector> queries;
    int order = 2;
+   int nbQueryVectors = 20;
+
+   queries = SamplingBlueNoise<Vector>(nbQueryVectors);
+   queries.push_back(glm::normalize(glm::vec3(0,0,1)));
+   queries.push_back(glm::normalize(glm::vec3(0,1,0)));
+   queries.push_back(glm::normalize(glm::vec3(1,0,0)));
+   queries.push_back(glm::normalize(glm::vec3(1,1,1)));
 
    // Using the canonical frame
-   directions.clear();
-   directions.push_back(glm::normalize(glm::vec3(0,0,1)));
-   directions.push_back(glm::normalize(glm::vec3(0,1,0)));
-   directions.push_back(glm::normalize(glm::vec3(1,0,0)));
-   nb_fails += CheckZHDecomposition(directions);
+   basis.clear();
+   basis.push_back(glm::normalize(glm::vec3(0,0,1)));
+   basis.push_back(glm::normalize(glm::vec3(0,1,0)));
+   basis.push_back(glm::normalize(glm::vec3(1,0,0)));
+   nb_fails += CheckZHDecomposition(basis, queries);
 
    // Using random directions
-   directions.clear();
-   directions = SamplingBlueNoise<Vector>(2*order+1);
-   nb_fails += CheckZHDecomposition(directions);
-   nb_fails += CheckZHDecomposition(directions, Vector(1,1,1));
+   basis.clear();
+   basis = SamplingBlueNoise<Vector>(2*order+1);
+   nb_fails += CheckZHDecomposition(basis, queries);
 
    // Using random directions
-   order = 3;
-   directions.clear();
-   directions = SamplingBlueNoise<Vector>(2*order+1);
-   nb_fails += CheckZHDecomposition(directions, Vector(1,1,1));
+   order = 5;
+   basis.clear();
+   basis = SamplingBlueNoise<Vector>(2*order+1);
+   nb_fails += CheckZHDecomposition(basis, queries);
 
    if(nb_fails == 0) {
       return EXIT_SUCCESS;

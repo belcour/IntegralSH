@@ -6,6 +6,18 @@
 // Include STL
 #include <vector>
 
+/* _Is `a` close to `b` ?_
+ *
+ * This template function check if a-b is smaller than a fraction of the max
+ * between a and b. By default, it checks if it is smaller than 1 percent of
+ * the maximum value.
+ */
+template<typename T>
+inline bool closeTo(const T& a, const T&b, const T& Percentage = T(0.01)) {
+  const T c = std::max<T>(std::max<T>(a, b), Percentage);
+  return (std::abs<T>(a-b) < Percentage * c);
+}
+
 struct Edge {
    Edge(const glm::vec3& a, const glm::vec3& b) : A(a), B(b) {}
    glm::vec3 A, B;
