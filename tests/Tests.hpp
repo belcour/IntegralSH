@@ -6,6 +6,10 @@
 // Include STL
 #include <vector>
 
+// Eigen CORE
+// Required for the template version of abs
+#include <Eigen/Core>
+
 /* _Is `a` close to `b` ?_
  *
  * This template function check if a-b is smaller than a fraction of the max

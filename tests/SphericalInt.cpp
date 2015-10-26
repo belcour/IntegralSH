@@ -5,10 +5,11 @@
 #include <random>
 
 // Local includes
+//#define USE_SPARSE_EIGEN
+#include "Tests.hpp"
+#include "SH.hpp"
 #include "SphericalIntegration.hpp"
 #include "DirectionsSampling.hpp"
-#include "SH.hpp"
-#include "Tests.hpp"
 
 // GLM include
 #include <glm/glm.hpp>
@@ -206,7 +207,13 @@ int CheckZHDecomposition(const std::vector<Vector>& directions,
              << " for a set of " << queries.size() << " directions" << std::endl;
 
    auto Y = ZonalExpansion<SH, Vector>(directions);
-   auto A = Y.inverse();
+   if(!closeTo(Y(0,0), 1.0f, Epsilon)) {
+      std::cout << "Error: first entry in the matrix is: "
+                << Y(0,0) << " ≠ 1" << std::endl;
+      ++nb_fails;
+   }
+
+   auto A = computeInverse(Y);
 
    // Test if the matrix is full Rank
    Eigen::FullPivLU<Eigen::MatrixXf> rankComputer(Y);
@@ -327,8 +334,21 @@ int main(int argc, char** argv) {
    basis = SamplingBlueNoise<Vector>(2*order+1);
    nb_fails += CheckZHDecomposition(basis, queries);
 
-   // Using random directions
+   // Using random directions and order 5
    order = 5;
+   basis.clear();
+   basis = SamplingBlueNoise<Vector>(2*order+1);
+   nb_fails += CheckZHDecomposition(basis, queries);
+
+   // Using random directions and order 10
+   order = 10;
+   basis.clear();
+   basis = SamplingBlueNoise<Vector>(2*order+1);
+   nb_fails += CheckZHDecomposition(basis, queries);
+
+   // Using random directions and order 18. This is the maximum order
+   // that FastSH can produce.
+   order = 18;
    basis.clear();
    basis = SamplingBlueNoise<Vector>(2*order+1);
    nb_fails += CheckZHDecomposition(basis, queries);

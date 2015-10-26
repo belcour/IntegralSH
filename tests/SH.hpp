@@ -6,6 +6,8 @@
  * methods taken from PBRT.
  */
 
+// STL
+#include <exception>
 
 // Eigen includes
 #include <Eigen/Core>
@@ -4033,6 +4035,9 @@ Eigen::VectorXf SHEvalFast(const Vector& w, int order) {
       fPc =  0.881855768678f;
       pOut[360] = fPc*fC1;
       pOut[324] = fPc*fS1;
+   } else {
+      // TODO: Throw an out of bound exception
+      throw std::exception();
    }
    return pOut;
 }

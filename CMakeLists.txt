@@ -1,6 +1,11 @@
 cmake_minimum_required (VERSION 3.2)
 project (AxialMoments)
 
+# Add platform dependent flags
+set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+include (OptimizeForArchitecture)
+
+# For debug build
 set(CMAKE_BUILD_TYPE DEBUG)
 
 include_directories ("include" "externals/Eigen" "externals/glm")

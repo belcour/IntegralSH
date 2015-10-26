@@ -3,6 +3,12 @@
 // Include Eigen
 #include <Eigen/Core>
 #include <Eigen/LU>
+#ifdef USE_SPARSE_EIGEN
+#include <Eigen/Sparse>
+typedef Eigen::SparseMatrix<float> MatrixType;
+#else
+typedef Eigen::MatrixXf MatrixType;
+#endif
 
 // Include STL
 #include <cmath>
@@ -150,9 +156,12 @@ Eigen::VectorXf ZHEvalFast(const std::vector<Vector>& dirs, const Vector& w) {
  * as the static function `SH::FastBasis(const Vector& w, int order)`.
  */
 template<class SH, class Vector>
-Eigen::MatrixXf ZonalExpansion(const std::vector<Vector>& directions) {
+MatrixType ZonalExpansion(const std::vector<Vector>& directions) {
 
-   // Get the current band
+   // Get the current band. Here I use a shifted order number. The integer
+   // order is actually `order+1` to compute the number of rows and iterate
+   // over it. Later in the code I evaluate the correct order to get the
+   // ylm from SH::FastBasis.
    const int dsize = directions.size();
    const int order = (dsize-1) / 2 + 1;
    const int mrows = order*order;
@@ -160,14 +169,19 @@ Eigen::MatrixXf ZonalExpansion(const std::vector<Vector>& directions) {
 
    const auto zhNorm = ZonalNormalization(order);
 
-   Eigen::MatrixXf Y = Eigen::MatrixXf::Zero(mrows, mrows);
+#ifdef USE_SPARSE_EIGEN
+   MatrixType Y(mrows, mrows);
+   std::vector<Eigen::Triplet<float>> triplets;
+#else
+   MatrixType Y = Eigen::MatrixXf::Zero(mrows, mrows);
+#endif
    for(int i=0; i<dsize; ++i) {
 
       // Get the vector associated to the current row
       const Vector& w = directions[i];
 
       // Evaluate all the Y_{l,m} for the current vector
-      auto ylm = SH::FastBasis(w, order);
+      auto ylm = SH::FastBasis(w, order-1);
 
       // Complete all the submatrices starting from column `i` using order `j`
       // size for the ZH element.
@@ -178,9 +192,58 @@ Eigen::MatrixXf ZonalExpansion(const std::vector<Vector>& directions) {
 
          const int  shift = j*j;
          const int  vsize = 2*j+1;
+#ifdef USE_SPARSE_EIGEN
+         for(int k=0; k<vsize; ++k) {
+            const float& v = ylm[shift+k];
+            triplets.push_back(Eigen::Triplet<float>(shift+i, shift+k, v));
+         }
+         Y.setFromTriplets(triplets.begin(), triplets.end());
+#else
          Y.block(shift+i, shift, 1, vsize) = ylm.segment(shift, vsize).transpose() / zhNorm[j];
+#endif
       }
    }
 
    return Y;
+}
+
+/* _Compute the Inverse of Matrix Y_
+ *
+ * Since the matrix resulting from ZonalExpansion is block diagonal, its
+ * inverse is trivial to compute. We must simply take the inverse of each
+ * block, in place.
+ *
+ * TODO: Make the sparse version.
+ */
+MatrixType computeInverse(const MatrixType& Y) {
+   const int nrows = Y.rows();
+   const int order = sqrt(nrows);
+
+#ifdef USE_SPARSE_EIGEN
+   MatrixType A(mrows, nrows);
+   std::vector<Eigen::Triplet<float>> triplets;
+#else
+   MatrixType A = Eigen::MatrixXf::Zero(nrows, nrows);
+#endif
+
+   for(int j=0; j<order; ++j) {
+      const int shift = j*j;
+      const int size  = 2*j+1;
+
+#ifdef USE_SPARSE_EIGEN
+      assert(false);
+#else
+      const auto& block = Y.block(shift, shift, size, size);
+
+      // Check if the block is Zero or not in debug mode
+      if(block.isZero()) {
+         std::cout << "Block of order " << j << " is zero" << std::endl;
+         std::cout << block << std::endl << std::endl;
+      }
+      //assert(!block.isZero());
+
+      A.block(shift, shift, size, size) = block.inverse();
+#endif
+   }
+   return A;
 }
