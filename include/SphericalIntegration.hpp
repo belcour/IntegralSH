@@ -35,15 +35,15 @@ inline Eigen::MatrixXf ZonalWeights(int order) {
    W(1,1) = 1.0f;
    for(int n=2; n<order; ++n) {
       const int subsize = n;
-      W.col(n).segment(1, subsize) = (2*n-1) * W.col(n-1).segment(0, subsize);
-      W.col(n) -= (n-1) * W.col(n-2);
-      W.col(n) /= n;
+      W.row(n).segment(1, subsize) = (2*n-1) * W.row(n-1).segment(0, subsize);
+      W.row(n) -= (n-1) * W.row(n-2);
+      W.row(n) /= n;
    }
 
    // Scale each columns by the corresponding √(2l+1 / 4π) factor.
    const float factor = 1.0f/sqrt(4.0f*M_PI);
-   for(int n=0; n<W.cols(); ++n) {
-      W.col(n) = W.col(n) * sqrt(2*n+1) * factor;
+   for(int n=0; n<W.rows(); ++n) {
+      W.row(n) = W.row(n) * sqrt(2*n+1) * factor;
    }
 
    return W;
@@ -57,16 +57,28 @@ inline Eigen::MatrixXf ZonalWeights(int order) {
 inline Eigen::MatrixXf ZonalWeights(const std::vector<Vector>& directions) {
 
    const int dsize = directions.size();
-   const int order = (dsize-1) / 2;
+   const int order = (dsize-1) / 2 + 1;
    const int mrows = order*order;
 
-   Eigen::MatrixXf result = Eigen::MatrixXf::Zero(mrows, mrows);
+   Eigen::MatrixXf result = Eigen::MatrixXf::Zero(mrows, dsize*order);
 
    const auto ZW = ZonalWeights(order);
 
-   for(int j=0; j<order; ++j) {
-      const int shift = j*order;
-      result.block(shift, shift, order, order) = ZW.block(0, 0, order, order);
+   // Each vector fills a given set of column entries with decreasing
+   // number to do the swapping. For example, the 0th vector will fill
+   // entries from order 0 to max_order but the 1srt vector will fill
+   // entries from 1 to max_order.
+   for(int i=0; i<dsize; ++i) {
+      for(int j=0; j<order; ++j) {
+         if(i >= 2*j+1) {
+            continue;
+         }
+
+         const int shift_rows = j*j + i;
+         const int shift_cols = order*i;
+
+         result.block(shift_rows, shift_cols, 1, order) = ZW.row(j);
+      }
    }
    return result;
 }
@@ -268,4 +280,32 @@ MatrixType computeInverse(const MatrixType& Y) {
 #endif
    }
    return A;
+}
+
+/* _Compute the SH Integral over a Spherial Triangle_
+ *
+ * This function is provided as an example of how to use the different
+ * components of this package. It is probably much faster to precompute the
+ * product `Prod` of the ZonalWeights and the Zonal to SH conversion matrix.
+ */
+template<class Triangle, class Vector, class SH>
+float computeSHIntegral(const Eigen::VectorXf& clm,
+                        const std::vector<Vector>& basis,
+                        const Triangle& triangle) {
+
+   // Get the Zonal weights matrix and the Zlm -> Ylm conversion matrix
+   // and compute the product of the two: `Prod = A x Zw`.
+   const auto ZW = ZonalWeights(basis);
+   const auto Y  = ZonalExpansion<SH, Vector>(basis);
+   const auto A  = computeInverse(Y);
+
+   const auto Prod = A*ZW;
+
+   // Analytical evaluation of the integral of power of cosines for
+   // the different basis elements up to the order defined by the
+   // number of elements in the basis
+   const auto moments = AxialMoments<Triangle, Vector>(triangle, basis);
+
+   return clm.dot(Prod * moments);
+
 }

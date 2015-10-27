@@ -268,7 +268,7 @@ inline Eigen::VectorXf AxialMoments(const Polygon& P,
       const auto In = AxialMoment<Polygon, Vector>(P, w, order-1);
 
       const int shift = i*order;
-      result.segment(shift, order) = In;
+      result.segment(shift, order) = In.segment(0, order);
    }
    return result;
 }

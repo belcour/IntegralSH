@@ -14,6 +14,26 @@
 // GLM include
 #include <glm/glm.hpp>
 
+struct SH {
+   // Define the Vector type
+   typedef glm::vec3 Vector;
+
+   // Inline for FastBasis
+   static inline Eigen::VectorXf FastBasis(const Vector& w, int lmax) {
+      return SHEvalFast<Vector>(w, lmax);
+   }
+
+   // Inline for Terms
+   static inline int Terms(int band) {
+      return SHTerms(band);
+   }
+
+   // Inline for Index
+   static inline int Index(int l, int m) {
+      return SHIndex(l, m);
+   }
+};
+
 /* Check the Lengendre expansion for the first elements in the matrix. This
  * test the init elements and the recursion pattern.
  */
@@ -29,7 +49,7 @@ int CheckLegendreExpansion(float Epsilon = 1.0E-3f) {
         0.0f,       0.0f,  sqrt(45.0f/4.0f);
    R *= factor;
 
-   if(! W.isApprox(R, Epsilon)) {
+   if(! W.isApprox(R.transpose(), Epsilon)) {
       std::cout << "Error, ZonalWeights are not correct:" << std::endl;
       std::cout << W << std::endl << std::endl;
       std::cout << R << std::endl;
@@ -61,7 +81,7 @@ int CheckZHEqualsCosinePower(float Epsilon = 1.0E-3f) {
       CosPow[i] = pow(dotWN, i);
    }
    auto W = ZonalWeights(lmax);
-   auto CosZh = (CosPow.transpose() * W).transpose();
+   auto CosZh = (W * CosPow);
 
    // SH Evaluation for w.
    // Zonal coefficients represent y_l (w · n).
@@ -180,25 +200,6 @@ int CheckZHDecomposition(const std::vector<Vector>& directions,
                          const std::vector<Vector>& queries,
                          float Epsilon = 1.0E-3f) {
 
-   struct SH {
-      // Define the Vector type
-      typedef glm::vec3 Vector;
-
-      // Inline for FastBasis
-      static inline Eigen::VectorXf FastBasis(const Vector& w, int lmax) {
-         return SHEvalFast<Vector>(w, lmax);
-      }
-
-      // Inline for Terms
-      static inline int Terms(int band) {
-         return SHTerms(band);
-      }
-
-      // Inline for Index
-      static inline int Index(int l, int m) {
-         return SHIndex(l, m);
-      }
-   };
 
    int nb_fails = 0;
    int order    = (directions.size()-1) / 2;
@@ -334,25 +335,37 @@ float MonteCarloSH(const Eigen::VectorXf& clm, const Triangle& triangle) {
  * expansion + Arvo's integral or MC method.
  */
 int CheckSHIntegration(const Eigen::VectorXf& clm,
-                       const Triangle& triangle,
+                       const Triangle& tri,
                        float Epsilon = 1.0E-3) {
 
-   const int order = sqrt(clm.size());
+   std::cout << "Testing the analytical integration with:" << std::endl;
+   std::cout << " + Triangle ABC" << std::endl;
+   std::cout << "   + A = : " << tri[0].A << std::endl;
+   std::cout << "   + B = : " << tri[1].A << std::endl;
+   std::cout << "   + C = : " << tri[2].A << std::endl;
+   std::cout << " + SH expansion of the integrand" << std::endl;
+   std::cout << "   + clm = [" << clm.transpose() << "]" << std::endl;
+
+   const int order = sqrt(clm.size())-1;
    int nb_fails = 0;
 
-   // Exact solution
-   //std::cout << MonteCarloSH(clm, triangle) << std::endl << std::endl;
+   // Monte-Carlo solution
+   const auto mcI = MonteCarloSH(clm, tri);
 
-   const auto basis   = SamplingBlueNoise<Vector>(2*order+1);
-   std::cout << ZonalWeights(basis) << std::endl;
+   // Analytical solution
+   const auto basis = SamplingBlueNoise<Vector>(2*order+1);
+   const auto shI = computeSHIntegral<Triangle, Vector, SH>(clm, basis, tri);
 
-#ifdef UNFINISHED
-   // Analytical version
-   const auto moments = AxialMoments<Triangle, Vector>(triangle, basis);
-   auto Y = ZonalExpansion<SH, Vector>(directions);
-   auto A = computeInverse(Y);
-#endif
+   if(!closeTo(shI, mcI, Epsilon)) {
+      ++nb_fails;
 
+      std::cout << "Error: Monte-Carlo = " << mcI
+                << " ≠ Analytical = " << shI << std::endl;
+   } else {
+      std::cout << "Test passed!" << std::endl;
+   }
+
+   std::cout << std::endl;
    return nb_fails;
 }
 
@@ -377,7 +390,6 @@ int main(int argc, char** argv) {
    int order = 2;
    int nbQueryVectors = 20;
 
-#ifdef SKIP
    queries = SamplingBlueNoise<Vector>(nbQueryVectors);
    queries.push_back(glm::normalize(glm::vec3(0,0,1)));
    queries.push_back(glm::normalize(glm::vec3(0,1,0)));
@@ -414,16 +426,26 @@ int main(int argc, char** argv) {
    basis.clear();
    basis = SamplingBlueNoise<Vector>(2*order+1);
    nb_fails += CheckZHDecomposition(basis, queries);
-#endif
 
    /* SH Integration using the analytical form VS MonteCarlo */
-   order = 3;
-   Eigen::VectorXf clm = Eigen::VectorXf::Zero(order*order);
+   order = 2;
+   int sh_size = (order+1)*(order+1);
+   Eigen::VectorXf clm = Eigen::VectorXf::Zero(sh_size);
    clm[0] = 1.0f;
    auto A = glm::vec3(0.0, 0.0, 1.0);
    auto B = glm::vec3(0.0, 0.5, 1.0);
    auto C = glm::vec3(0.5, 0.0, 1.0);
    auto tri = Triangle(glm::normalize(A), glm::normalize(B), glm::normalize(C));
+   nb_fails += CheckSHIntegration(clm, tri);
+
+   // Using a random integrand
+   clm = Eigen::VectorXf::Random(sh_size).cwiseAbs();
+   nb_fails += CheckSHIntegration(clm, tri);
+
+   // Increasing the order to 5
+   order = 5;
+   sh_size = (order+1)*(order+1);
+   clm = Eigen::VectorXf::Random(sh_size).cwiseAbs();
    nb_fails += CheckSHIntegration(clm, tri);
 
    if(nb_fails == 0) {
