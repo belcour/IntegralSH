@@ -54,6 +54,7 @@ inline Eigen::MatrixXf ZonalWeights(int order) {
  * TODO This matrix should do the mixing between the ordered power of cosines
  * vector and the shuffled vector of ZH coefficients.
  */
+template<class Vector>
 inline Eigen::MatrixXf ZonalWeights(const std::vector<Vector>& directions) {
 
    const int dsize = directions.size();
@@ -295,7 +296,7 @@ inline float computeSHIntegral(const Eigen::VectorXf& clm,
 
    // Get the Zonal weights matrix and the Zlm -> Ylm conversion matrix
    // and compute the product of the two: `Prod = A x Zw`.
-   const auto ZW = ZonalWeights(basis);
+   const auto ZW = ZonalWeights<Vector>(basis);
    const auto Y  = ZonalExpansion<SH, Vector>(basis);
    const auto A  = computeInverse(Y);
 
