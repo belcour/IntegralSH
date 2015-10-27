@@ -296,9 +296,70 @@ int CheckZHDecomposition(const std::vector<Vector>& directions,
    return nb_fails;
 }
 
+/* Compute the integral of the spherical function defined by the SH
+ * coefficients `clm` over the spherical triangle using MC.
+ */
+float MonteCarloSH(const Eigen::VectorXf& clm, const Triangle& triangle) {
+
+   static std::mt19937 gen(0);
+   static std::uniform_real_distribution<float> dist(0.0,1.0);
+
+   const int order = sqrt(clm.size());
+
+   // Number of MC samples
+   const int M = 10000000;
+   float val = 0.0f;
+   for(int k=0; k<M; ++k) {
+
+#ifdef USE_TRIANGLE_SAMPLING
+      float pdf;
+      const Vector d = SampleSphericalTriangle(triangle, pdf);
+#else // UNIFORM SAMPLING
+      const float pdf = 1.0f / (4.0f*M_PI);
+      const Vector d  = Sample();
+#endif
+
+      const auto ylm = SHEvalFast<Vector>(d, order-1);
+
+      if(HitTriangle(triangle, d)) {
+         val += ylm.dot(clm) / pdf;
+      }
+
+   }
+   return val / M;
+}
+
+/* Check if the integration of the spherical function with SH coeffs `clm`
+ * over the spherical triangle `triangle` is the same if done using ZH
+ * expansion + Arvo's integral or MC method.
+ */
+int CheckSHIntegration(const Eigen::VectorXf& clm,
+                       const Triangle& triangle,
+                       float Epsilon = 1.0E-3) {
+
+   const int order = sqrt(clm.size());
+   int nb_fails = 0;
+
+   // Exact solution
+   //std::cout << MonteCarloSH(clm, triangle) << std::endl << std::endl;
+
+   const auto basis   = SamplingBlueNoise<Vector>(2*order+1);
+   std::cout << ZonalWeights(basis) << std::endl;
+
+#ifdef UNFINISHED
+   // Analytical version
+   const auto moments = AxialMoments<Triangle, Vector>(triangle, basis);
+   auto Y = ZonalExpansion<SH, Vector>(directions);
+   auto A = computeInverse(Y);
+#endif
+
+   return nb_fails;
+}
+
 int main(int argc, char** argv) {
 
    int nb_fails = 0;
+
 
    /* Check the basic elements of the ZH decomposition */
    nb_fails += CheckLegendreExpansion();
@@ -316,6 +377,7 @@ int main(int argc, char** argv) {
    int order = 2;
    int nbQueryVectors = 20;
 
+#ifdef SKIP
    queries = SamplingBlueNoise<Vector>(nbQueryVectors);
    queries.push_back(glm::normalize(glm::vec3(0,0,1)));
    queries.push_back(glm::normalize(glm::vec3(0,1,0)));
@@ -352,6 +414,17 @@ int main(int argc, char** argv) {
    basis.clear();
    basis = SamplingBlueNoise<Vector>(2*order+1);
    nb_fails += CheckZHDecomposition(basis, queries);
+#endif
+
+   /* SH Integration using the analytical form VS MonteCarlo */
+   order = 3;
+   Eigen::VectorXf clm = Eigen::VectorXf::Zero(order*order);
+   clm[0] = 1.0f;
+   auto A = glm::vec3(0.0, 0.0, 1.0);
+   auto B = glm::vec3(0.0, 0.5, 1.0);
+   auto C = glm::vec3(0.5, 0.0, 1.0);
+   auto tri = Triangle(glm::normalize(A), glm::normalize(B), glm::normalize(C));
+   nb_fails += CheckSHIntegration(clm, tri);
 
    if(nb_fails == 0) {
       return EXIT_SUCCESS;

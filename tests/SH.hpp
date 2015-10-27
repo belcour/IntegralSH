@@ -4087,6 +4087,9 @@ void SHDiffuseEvalFast(int order, float * shVal) {
       shVal[30] = 0;
       shVal[42] = 0.0499271;
       shVal[56] = 0;
+   } else {
+      // TODO: Throw an out of bound exception
+      throw std::exception();
    }
 }
 

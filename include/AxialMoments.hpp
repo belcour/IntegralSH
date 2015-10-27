@@ -6,6 +6,7 @@
 // STL includes
 #include <iostream>
 #include <cassert>
+#include <vector>
 
 #define AXIAL_EPSILON 1.0E-6
 
@@ -240,4 +241,34 @@ inline Eigen::VectorXf AxialMoment(const Polygon& P, const Vector& w, int n) {
    auto c = Eigen::VectorXf::LinSpaced(n+2, 1, n+2);
 
    return a.cwiseQuotient(c);
+}
+
+/* _Axial Moments_
+ *
+ * Compute the axial moments for given set of directions used for lobe sharing
+ * the maximum cosine order to compute the integral is a function of the size
+ * of the directions list.
+ */
+template<class Polygon, class Vector>
+inline Eigen::VectorXf AxialMoments(const Polygon& P,
+                                    const std::vector<Vector>& directions) {
+
+   const int dsize = directions.size();
+   const int order = (dsize-1) / 2 + 1;
+   const int mrows = order*order;
+
+   Eigen::VectorXf result(dsize*order);
+
+   for(int i=0; i<dsize; ++i) {
+
+      // Get the vector associated to the current row
+      const Vector& w = directions[i];
+
+      // Evaluate all the Y_{l,m} for the current vector
+      const auto In = AxialMoment<Polygon, Vector>(P, w, order-1);
+
+      const int shift = i*order;
+      result.segment(shift, order) = In;
+   }
+   return result;
 }

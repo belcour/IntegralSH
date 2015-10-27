@@ -25,7 +25,7 @@ typedef Eigen::MatrixXf MatrixType;
  *     y_{l, 0}(w · wd) = ∑_i w_{l,i} (w · wd)^i, V l in [0 .. order]
  *
  */
-Eigen::MatrixXf ZonalWeights(int order) {
+inline Eigen::MatrixXf ZonalWeights(int order) {
 
    // W is the matrix of the weights. It is build recursively using the Legendre
    // polynomials. The trick here is that Legendre polynomials are simply the
@@ -47,6 +47,28 @@ Eigen::MatrixXf ZonalWeights(int order) {
    }
 
    return W;
+}
+
+/* _Vector Group Zonal Weigths_
+ *
+ * TODO This matrix should do the mixing between the ordered power of cosines
+ * vector and the shuffled vector of ZH coefficients.
+ */
+inline Eigen::MatrixXf ZonalWeights(const std::vector<Vector>& directions) {
+
+   const int dsize = directions.size();
+   const int order = (dsize-1) / 2;
+   const int mrows = order*order;
+
+   Eigen::MatrixXf result = Eigen::MatrixXf::Zero(mrows, mrows);
+
+   const auto ZW = ZonalWeights(order);
+
+   for(int j=0; j<order; ++j) {
+      const int shift = j*order;
+      result.block(shift, shift, order, order) = ZW.block(0, 0, order, order);
+   }
+   return result;
 }
 
 /* _Zonal Normalization_
