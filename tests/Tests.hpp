@@ -6,6 +6,7 @@
 // Include STL
 #include <vector>
 #include <random>
+#include <utility>
 
 // Eigen CORE
 // Required for the template version of abs
@@ -21,6 +22,17 @@ template<typename T>
 inline bool closeTo(const T& a, const T&b, const T& Percentage = T(0.01)) {
   const T c = std::max<T>(std::max<T>(a, b), Percentage);
   return (std::abs<T>(a-b) < Percentage * c);
+}
+
+/* _Is `a` inside the confidence interval `[m-s, m+s]?
+ *
+ * `b` is supposed to be a confidence interval in the form of µ±ε where µ is
+ * `b.first` and ε is `b.second`.
+ */
+template<typename T>
+inline bool closeTo(const T& a, const std::pair<T,T>& b) {
+   assert(b.second >= T(0));
+   return (a < b.first + b.second) && (a > b.first - b.second);
 }
 
 struct Edge {

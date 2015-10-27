@@ -249,7 +249,7 @@ MatrixType ZonalExpansion(const std::vector<Vector>& directions) {
  *
  * TODO: Make the sparse version.
  */
-MatrixType computeInverse(const MatrixType& Y) {
+inline MatrixType computeInverse(const MatrixType& Y) {
    const int nrows = Y.rows();
    const int order = sqrt(nrows);
 
@@ -289,9 +289,9 @@ MatrixType computeInverse(const MatrixType& Y) {
  * product `Prod` of the ZonalWeights and the Zonal to SH conversion matrix.
  */
 template<class Triangle, class Vector, class SH>
-float computeSHIntegral(const Eigen::VectorXf& clm,
-                        const std::vector<Vector>& basis,
-                        const Triangle& triangle) {
+inline float computeSHIntegral(const Eigen::VectorXf& clm,
+                               const std::vector<Vector>& basis,
+                               const Triangle& triangle) {
 
    // Get the Zonal weights matrix and the Zlm -> Ylm conversion matrix
    // and compute the product of the two: `Prod = A x Zw`.

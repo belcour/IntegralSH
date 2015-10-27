@@ -3,6 +3,7 @@
 #include <iomanip>
 #include <vector>
 #include <random>
+#include <utility>
 
 // Local includes
 //#define USE_SPARSE_EIGEN
@@ -300,7 +301,8 @@ int CheckZHDecomposition(const std::vector<Vector>& directions,
 /* Compute the integral of the spherical function defined by the SH
  * coefficients `clm` over the spherical triangle using MC.
  */
-float MonteCarloSH(const Eigen::VectorXf& clm, const Triangle& triangle) {
+std::pair<float,float> MonteCarloSH(const Eigen::VectorXf& clm,
+                                    const Triangle& triangle) {
 
    static std::mt19937 gen(0);
    static std::uniform_real_distribution<float> dist(0.0,1.0);
@@ -309,7 +311,8 @@ float MonteCarloSH(const Eigen::VectorXf& clm, const Triangle& triangle) {
 
    // Number of MC samples
    const int M = 10000000;
-   float val = 0.0f;
+   float mean = 0.0f;
+   float var  = 0.0f;
    for(int k=0; k<M; ++k) {
 
 #ifdef USE_TRIANGLE_SAMPLING
@@ -323,11 +326,16 @@ float MonteCarloSH(const Eigen::VectorXf& clm, const Triangle& triangle) {
       const auto ylm = SHEvalFast<Vector>(d, order-1);
 
       if(HitTriangle(triangle, d)) {
-         val += ylm.dot(clm) / pdf;
+         const auto val = ylm.dot(clm) / pdf;
+         mean += val;
+         var  += val*val;
       }
 
    }
-   return val / M;
+
+   mean /= M;
+   var   = var / (M-1) - mean*mean;
+   return std::pair<float,float>(mean, 5.0f*sqrt(var/M));
 }
 
 /* Check if the integration of the spherical function with SH coeffs `clm`
@@ -356,10 +364,11 @@ int CheckSHIntegration(const Eigen::VectorXf& clm,
    const auto basis = SamplingBlueNoise<Vector>(2*order+1);
    const auto shI = computeSHIntegral<Triangle, Vector, SH>(clm, basis, tri);
 
-   if(!closeTo(shI, mcI, Epsilon)) {
+   if(!closeTo(shI, mcI)) {
       ++nb_fails;
 
-      std::cout << "Error: Monte-Carlo = " << mcI
+      std::cout << "Error: Monte-Carlo = " << mcI.first
+                << "(±" << mcI.second << ")"
                 << " ≠ Analytical = " << shI << std::endl;
    } else {
       std::cout << "Test passed!" << std::endl;
@@ -446,6 +455,13 @@ int main(int argc, char** argv) {
    order = 5;
    sh_size = (order+1)*(order+1);
    clm = Eigen::VectorXf::Random(sh_size).cwiseAbs();
+   nb_fails += CheckSHIntegration(clm, tri);
+
+   // Changing the triangle
+   A = glm::vec3( 0.0, 0.5, 0.5);
+   B = glm::vec3(-0.5, 0.5, 0.0);
+   C = glm::vec3( 0.5, 0.5, 0.0);
+   tri = Triangle(glm::normalize(A), glm::normalize(B), glm::normalize(C));
    nb_fails += CheckSHIntegration(clm, tri);
 
    if(nb_fails == 0) {

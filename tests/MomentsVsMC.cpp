@@ -11,11 +11,13 @@
 std::mt19937 gen(0);
 std::uniform_real_distribution<float> dist(0.0,1.0);
 
-float MonteCarloMoments(const Triangle& triangle, const Vector& w, int n) {
+std::pair<float,float> MonteCarloMoments(const Triangle& triangle,
+                                         const Vector& w, int n) {
 
    // Number of MC samples
    const int M = 10000000;
-   float val = 0.0f;
+   float mean = 0.0f;
+   float var  = 0.0f;
    for(int k=0; k<M; ++k) {
 #ifdef USE_TRIANGLE_SAMPLING
       float pdf;
@@ -26,11 +28,15 @@ float MonteCarloMoments(const Triangle& triangle, const Vector& w, int n) {
 #endif
 
       if(HitTriangle(triangle, d)) {
-         val += pow(glm::dot(d, w), n) / pdf;
+         const auto val = pow(glm::dot(d, w), n) / pdf;
+         mean += val;
+         var  += val*val;
       }
-
    }
-   return val / M;
+
+   mean /= M;
+   var   = var / (M-1) - mean*mean;
+   return std::pair<float,float>(mean, 5.0f*sqrt(var/M));
 }
 
 int TestMoments(const glm::vec3& w, const Triangle& tri,
@@ -56,13 +62,13 @@ int TestMoments(const glm::vec3& w, const Triangle& tri,
       auto analytical = moments[n];
       std::cout << "Analytical for n=" << n << " : " << analytical << std::endl;
 
-      auto montecarlo = MonteCarloMoments(tri, w, n);
-      std::cout << "MonteCarlo for n=" << n << " : " << montecarlo << std::endl;
+      auto mcI = MonteCarloMoments(tri, w, n);
+      std::cout << "MonteCarlo for n=" << n << " : " << mcI.first
+                                       << " ± " << mcI.second << std::endl;
 
-      if(std::abs(analytical - montecarlo) > Epsilon*std::abs(analytical) ||
-         std::isnan(analytical)) {
+      if(!closeTo(analytical, mcI) || std::isnan(analytical)) {
          std::cerr << "Error: moment " << n << " differs from MC!" << std::endl;
-         std::cerr << "       error is = " << std::abs(analytical - montecarlo) << std::endl;
+         std::cerr << "       error is = " << std::abs(analytical - mcI.first) << std::endl;
          ++nb_fails;
       }
    }
