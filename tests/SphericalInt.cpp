@@ -298,6 +298,46 @@ int CheckZHDecomposition(const std::vector<Vector>& directions,
    return nb_fails;
 }
 
+/* Check matrix mutiplication order
+ */
+int CheckMatrixOrder(const Eigen::VectorXf& clm,
+                     const Triangle& tri) {
+
+   std::cout << "Testing the analytical order" << std::endl;
+
+   const int order = sqrt(clm.size())-1;
+   int nb_fails = 0;
+
+   const auto basis = SamplingBlueNoise<Vector>(2*order+1);
+
+   // Get the Zonal weights matrix and the Zlm -> Ylm conversion matrix
+   // and compute the product of the two: `Prod = A x Zw`.
+   const auto ZW = ZonalWeights<Vector>(basis);
+   const auto Y  = ZonalExpansion<SH, Vector>(basis);
+   const auto A  = computeInverse(Y);
+
+   const auto Prod = A*ZW;
+
+   // Analytical evaluation of the integral of power of cosines for
+   // the different basis elements up to the order defined by the
+   // number of elements in the basis
+   const Eigen::VectorXf moments = AxialMoments<Triangle, Vector>(tri, basis);
+
+   const float order1 = clm.dot(Prod * moments);
+   const float order2 = moments.dot(clm.transpose() * Prod);
+
+   if(!closeTo(order1, order2)) {
+      std::cerr << "Error: the evaluation of the integral is order dependant!"
+                << std::endl
+                << " + clm x (AxZW x mnt) ≠ (clm x AxZW) x mnt" << std::endl
+                << " +   " << order1 << " ≠ " << order2 << std::endl
+                << std::endl;
+      return 1;
+   } else {
+      return 0;
+   }
+}
+
 /* Compute the integral of the spherical function defined by the SH
  * coefficients `clm` over the spherical triangle using MC.
  */
@@ -445,16 +485,19 @@ int main(int argc, char** argv) {
    auto B = glm::vec3(0.0, 0.5, 1.0);
    auto C = glm::vec3(0.5, 0.0, 1.0);
    auto tri = Triangle(glm::normalize(A), glm::normalize(B), glm::normalize(C));
+   nb_fails += CheckMatrixOrder(clm, tri);
    nb_fails += CheckSHIntegration(clm, tri);
 
    // Using a random integrand
    clm = Eigen::VectorXf::Random(sh_size).cwiseAbs();
+   nb_fails += CheckMatrixOrder(clm, tri);
    nb_fails += CheckSHIntegration(clm, tri);
 
    // Increasing the order to 5
    order = 5;
    sh_size = (order+1)*(order+1);
    clm = Eigen::VectorXf::Random(sh_size).cwiseAbs();
+   nb_fails += CheckMatrixOrder(clm, tri);
    nb_fails += CheckSHIntegration(clm, tri);
 
    // Changing the triangle
@@ -462,6 +505,7 @@ int main(int argc, char** argv) {
    B = glm::vec3(-0.5, 0.5, 0.0);
    C = glm::vec3( 0.5, 0.5, 0.0);
    tri = Triangle(glm::normalize(A), glm::normalize(B), glm::normalize(C));
+   nb_fails += CheckMatrixOrder(clm, tri);
    nb_fails += CheckSHIntegration(clm, tri);
 
    if(nb_fails == 0) {

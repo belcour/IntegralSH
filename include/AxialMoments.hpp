@@ -255,7 +255,6 @@ inline Eigen::VectorXf AxialMoments(const Polygon& P,
 
    const int dsize = directions.size();
    const int order = (dsize-1) / 2 + 1;
-   const int mrows = order*order;
 
    Eigen::VectorXf result(dsize*order);
 
