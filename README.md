@@ -8,10 +8,17 @@ The integration code is header only and template based. It requires to compile w
 
 A CMake script is provided to perform the sanity check of the code. Examples of use of the spherical integration code can be found in `test`.
 
+#### Templates ####
+
+This code relies on templates to enable a simpler integration into over codebases. We provide examples of our wrappers in `tests/Test.hpp`. To use our code, you will have to define the following class wrappers:
+
+   + `class SH` that allows to compute the vector of Spherical Harmonics basis elements for a given input vector and over SH related functions.
+   + `class Vector` that represent 3D vectors. This class needs to provide static functions such as `Dot`, `Normalize` and `Cross`.
+   + `class Triangle` and `class Edge` that represent a spherical triangle which is a simple interator over a set of edges.
 
 #### Using Spherical Integration Code ####
 
-The spherical integration code is located in the `SphericalIntegration.hpp` header. Given an input triangle `T` and an SH decomposition of some function to integrate `clm`, the method works as follows:
+The spherical integration code is located in the `SphericalIntegration.hpp` header. Given an input triangle `triangle` and an SH decomposition of some function to integrate `clm`, the method works as follows:
 
 First, convert the SH expansion to a Zonal Harmonics expansion `zlm` with a set of basis vectors `basis`. You can use our `SamplingBlueNoise` method located in `DirectionsSampling.hpp` to generate a basis vectors:
 
