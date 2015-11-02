@@ -308,5 +308,4 @@ inline float computeSHIntegral(const Eigen::VectorXf& clm,
    const auto moments = AxialMoments<Triangle, Vector>(triangle, basis);
 
    return clm.dot(Prod * moments);
-
 }

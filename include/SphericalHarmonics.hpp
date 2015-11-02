@@ -7,18 +7,21 @@
 // STL includes
 #include <vector>
 
-/* From a set of `basis` vector directions, and a spherical function `Functor`, generate
- * the Spherical Harmonics projection of the `Functor`. This algorithm works as follows:
+/* From a set of `basis` vector directions, and a spherical function `Functor`,
+ * generate the Spherical Harmonics projection of the `Functor`. This algorithm
+  * works as follows:
  *
  *  1. Evaluate the matrix Ylm(w_i) for each SH index and each direction
  *  2. Evaluate the vector of the functor [f(w_0), ..., f(w_n)]
  *  3. Return the product Ylm(w_i)^{-1} [f(w_0), ..., f(w_n)]
  *
  *  Requierement: `basis` must have the dimension of the output SH vector.
- *                `f` must be real valued. Higher dimension functor are not handled yet.
+ *                `f` must be real valued. Higher dimension functor are not
+ *                handled yet.
  */
 template<class Functor, class Vector, class SH>
-inline Eigen::VectorXf ProjectToSH(const Functor& f, const std::vector<Vector>& basis) {
+inline Eigen::VectorXf ProjectToSH(const Functor& f,
+                                   const std::vector<Vector>& basis) {
 
    // Get the number of elements to compute
    const int dsize = basis.size();
