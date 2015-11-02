@@ -2,6 +2,7 @@
 
 This code implements the analytical integration method from *A Closed-Form Method for Integrating Arbitrary Spherical Polynomials*.
 
+
 ### Use this code ###
 
 The integration code is header only and template based. It requires to compile with a C++11 compatible compiler and uses [Eigen](http://eigen.tuxfamily.org) to perform the required linear algebra operations. Eigen is defined as a submodule of this git repository.
@@ -35,7 +36,7 @@ Then use this basis vectors to compute the conversion SH -> ZH -> Power of cosin
       const auto A   = computeInverse(Y);
       const auto cpw = clm.transpose() * (A*ZW);
 
-Note that the matrix `A*ZW` can be precomputed to improve performances.
+Note that the matrix `A*ZW` can be cached to improve performances.
 
 Then the `AxialMoments` method will return the vector of cosine power integrals for the triangle `triangle`:
 
@@ -44,3 +45,8 @@ Then the `AxialMoments` method will return the vector of cosine power integrals 
       // number of elements in the basis
       const auto moments = AxialMoments<Triangle, Vector>(triangle, basis);
       return cpw.dot(moments);
+
+
+### Contacts ###
+
+For any questions or remarks, please ask to laurent.belcour@umontreal.ca
