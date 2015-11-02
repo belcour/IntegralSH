@@ -4,6 +4,7 @@
 #include <random>
 #include <cmath>
 #include <limits>
+#include <chrono>
 
 /* Compute the minimum dot distance between a set of directions and another
  * direction. The vectors are assumed to be normalized here.
@@ -30,7 +31,7 @@ float MinDotDistance(const std::vector<Vector>& dirs, const Vector& w) {
 template<class Vector>
 std::vector<Vector> SamplingBlueNoise(int nb, int MAX_TRY = 1000) {
 
-   std::mt19937 gen(0);
+   std::mt19937 gen(std::chrono::system_clock::now().time_since_epoch().count());
    std::uniform_real_distribution<float> dist(0.0,1.0);
 
    std::vector<Vector> res;

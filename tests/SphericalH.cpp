@@ -34,24 +34,29 @@ struct SH {
 
 /* Test the SH projection with respect to a diffuse functor: f(w) = (w·n)+
  */
-int TestDiffuseProjection(int order = 5, float Epsilon = 1.0E-3f) {
+int TestPhongProjection(int order = 5, int exp = 1, float Epsilon = 1.0E-3f) {
 
-   struct DiffuseFunctor {
+   struct CosPowFunctor {
       // Constructor
-      inline DiffuseFunctor() {}
+      int _exp;
+      inline CosPowFunctor(int exp=1) : _exp(exp) {}
 
       // Operator function
       inline float operator()(const Vector& w) const {
-         return glm::clamp(w.z, 0.0f, 1.0f);
+         return pow(glm::clamp(w.z, 0.0f, 1.0f), _exp);
       }
    };
+
+   std::cout << "Test of the project of a cosine power to SH" << std::endl;
+   std::cout << "  + SH max order = " << order << std::endl;
+   std::cout << "  + Cosine power = " << exp << std::endl;
 
    const int msize = (order+1)*(order+1);
    int nb_fails    = 0;
 
-   const DiffuseFunctor f;
+   const CosPowFunctor f;
    const std::vector<Vector>  basis = SamplingBlueNoise<Vector>(msize);
-   const Eigen::VectorXf      clm   = ProjectToSH<DiffuseFunctor, Vector, SH>(f, basis);
+   const Eigen::VectorXf      clm   = ProjectToSH<CosPowFunctor, Vector, SH>(f, basis);
 
    for(auto& w : basis) {
 
@@ -60,7 +65,7 @@ int TestDiffuseProjection(int order = 5, float Epsilon = 1.0E-3f) {
       const float pi = ylm.dot(clm);
       const float fi = f(w);
 
-      if(std::abs(pi - fi) > Epsilon) {
+      if(!closeTo(fi, pi)) {
          std::cout << "SH(w) = " << pi << " ≠ " << fi << " f(w), "
                    << "for w = "<< w << std::endl;
          ++nb_fails;
@@ -76,7 +81,7 @@ int TestDiffuseProjection(int order = 5, float Epsilon = 1.0E-3f) {
       const float pi = ylm.dot(clm);
       const float fi = f(w);
 
-      if(std::abs(pi - fi) > Epsilon) {
+      if(!closeTo(fi, pi)) {
          std::cout << "SH(w) = " << pi << " ≠ " << fi << " f(w), "
                    << "for w = "<< w << std::endl;
          ++nb_fails;
@@ -96,7 +101,20 @@ int TestDiffuseProjection(int order = 5, float Epsilon = 1.0E-3f) {
 int main(int argc, char** argv) {
    int nb_fails = 0;
 
-   nb_fails += TestDiffuseProjection();
+   int order = 5;
+   int exp   = 1;
+
+   // Test the diffuse project (exponent = 1)
+   nb_fails += TestPhongProjection(order, exp);
+
+   // Test for low exponnent phong
+   exp = 3;
+   nb_fails += TestPhongProjection(order, exp);
+
+   // Test for mid exponnent phong
+   order = 15;
+   exp   = 10;
+   nb_fails += TestPhongProjection(order, exp);
 
    if(nb_fails > 0) {
       return EXIT_FAILURE;

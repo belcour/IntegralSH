@@ -20,8 +20,12 @@
  */
 template<typename T>
 inline bool closeTo(const T& a, const T&b, const T& Percentage = T(0.01)) {
-  const T c = std::max<T>(std::max<T>(a, b), Percentage);
-  return (std::abs<T>(a-b) < Percentage * c);
+   if(a == T(0.0) || b == T(0.0)) {
+      return std::abs<T>(a-b) < Percentage;
+   } else {
+      const T c = std::max<T>(std::max<T>(a, b), Percentage);
+      return (std::abs<T>(a-b) < Percentage * c);
+   }
 }
 
 /* _Is `a` inside the confidence interval `[m-s, m+s]?
