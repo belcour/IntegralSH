@@ -12,7 +12,7 @@ A CMake script is provided to perform the sanity check of the code. Examples of 
 
 This code relies on templates to enable a simpler integration into over codebases. We provide examples of our wrappers in `tests/Test.hpp`. To use our code, you will have to define the following class wrappers:
 
-   + `class SH` that allows to compute the vector of Spherical Harmonics basis elements for a given input vector and over SH related functions.
+   + `class SH` that provides `FastBasis`, a method to compute the vector of Spherical Harmonics basis elements for a given input vector and over SH related functions. See our implementation in `tests/SphericalInt.cpp`.
    + `class Vector` that represent 3D vectors. This class needs to provide static functions such as `Dot`, `Normalize` and `Cross`.
    + `class Triangle` and `class Edge` that represent a spherical triangle which is a simple interator over a set of edges.
 
