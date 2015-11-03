@@ -196,9 +196,15 @@ inline float SolidAngle(const Polygon& P) {
 template<class Poylgon, class Vector>
 inline bool CheckPolygon(const Poylgon& P) {
    if(P.size() == 3) {
+//*    // Check with respect to centroid
       const auto D = (P[0].A + P[1].A + P[2].A) / 3.0f;
       const auto N = Vector::Cross(P[1].A-P[0].A, P[2].A-P[0].A);
       return Vector::Dot(D, N) <= 0.0f;
+/*/
+      // Check with respect to A
+      const auto N = Vector::Cross(P[0].A-P[1].A, P[1].A-P[2].A);
+      return Vector::Dot(P[0].A, N) <= 0.0f;
+//*/
    } else {
       assert(false);
       return false;
@@ -225,7 +231,9 @@ inline Eigen::VectorXf AxialMoment(const Polygon& P, const Vector& w, int n) {
 #ifdef CHECK_ORIENTATION
    // Check if the polygon is well oriented
    const bool check = CheckPolygon<Polygon, Vector>(P);
-   assert(check);
+   if(!check) {
+      return Eigen::VectorXf::Zero(n+2);
+   }
 #endif
 
    // Arvo's boundary integral for single vector moment.

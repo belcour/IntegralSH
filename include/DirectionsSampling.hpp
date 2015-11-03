@@ -35,6 +35,7 @@ std::vector<Vector> SamplingBlueNoise(int nb, int MAX_TRY = 1000) {
    std::uniform_real_distribution<float> dist(0.0,1.0);
 
    std::vector<Vector> res;
+   res.reserve(nb);
 
    float max_dist = 0.5;
    int n=0;
@@ -69,5 +70,28 @@ std::vector<Vector> SamplingBlueNoise(int nb, int MAX_TRY = 1000) {
       }
    }
 
+   return res;
+}
+
+/* _Sampling Fibonacci Directions_
+ */
+template<class Vector>
+std::vector<Vector> SamplingFibonacci(int nb) {
+
+   // Golden ratio
+   const float gratio = (sqrt(5.0f)+1.0f)/2.0f;
+
+   std::vector<Vector> res;
+   res.reserve(nb);
+
+   for(int i=0; i<nb; ++i) {
+      const float zi = 1.0f - float(2*i+1) / float(nb);
+      const float xi = float(i) / gratio;
+      const float pi = 2.0f*M_PI * (xi - std::floor(xi));
+
+      const float sint = sqrt(1.0 - zi*zi);
+
+      res.push_back(Vector(sint*cos(pi), sint*sin(pi), zi));
+   }
    return res;
 }

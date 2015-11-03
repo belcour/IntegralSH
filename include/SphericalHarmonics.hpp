@@ -6,6 +6,7 @@
 
 // STL includes
 #include <vector>
+#include <random>
 
 /* From a set of `basis` vector directions, and a spherical function `Functor`,
  * generate the Spherical Harmonics projection of the `Functor`. This algorithm
@@ -30,7 +31,7 @@ inline Eigen::VectorXf ProjectToSH(const Functor& f,
    Eigen::MatrixXf Ylm(dsize, dsize);
    Eigen::VectorXf flm(dsize);
 
-   for(int i=0; i<basis.size(); ++i) {
+   for(unsigned int i=0; i<basis.size(); ++i) {
 
       const Vector& w = basis[i];
 
@@ -41,4 +42,34 @@ inline Eigen::VectorXf ProjectToSH(const Functor& f,
    }
 
    return Ylm.inverse() * flm;
+}
+
+/* Project a spherical function `f` onto Spherical Harmonics coefficients up
+ * to order `order` using Monte-Carlo integration.
+ */
+template<class Functor, class Vector, class SH>
+Eigen::VectorXf ProjectToShMC(const Functor& f, int order, int M=100000) {
+
+   std::mt19937 gen(0);
+   std::uniform_real_distribution<float> dist(0.0,1.0);
+
+   Eigen::VectorXf shCoeffs((order+1)*(order+1));
+   for(int i=0; i<M; ++i) {
+
+      // Sample the cosine of the elevation
+      Vector w;
+      w.z = 2.0*dist(gen) - 1.0;
+      const float z2 = w.z*w.z;
+
+      // Sample the azimuth
+      const float phi = 2.0*M_PI*dist(gen);
+      w.x = sqrt(1.0f-z2) * cos(phi);
+      w.y = sqrt(1.0f-z2) * sin(phi);
+
+      // Evaluate the function and the basis vector
+      shCoeffs += f(w) * SH::FastBasis(w, order);
+   }
+   shCoeffs *= 4.0*M_PI / float(M);
+
+   return shCoeffs;
 }

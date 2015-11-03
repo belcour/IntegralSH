@@ -9,6 +9,7 @@
 //#define USE_SPARSE_EIGEN
 #include "Tests.hpp"
 #include "SH.hpp"
+#include "SphericalHarmonics.hpp"
 #include "SphericalIntegration.hpp"
 #include "DirectionsSampling.hpp"
 
@@ -32,6 +33,17 @@ struct SH {
    // Inline for Index
    static inline int Index(int l, int m) {
       return SHIndex(l, m);
+   }
+};
+
+struct CosPowFunctor {
+   // Constructor
+   int _exp;
+   inline CosPowFunctor(int exp=1) : _exp(exp) {}
+
+   // Operator function
+   inline float operator()(const Vector& w) const {
+      return (_exp+1)*pow(glm::clamp(w.z, 0.0f, 1.0f), _exp) / (2*M_PI);
    }
 };
 
@@ -418,10 +430,172 @@ int CheckSHIntegration(const Eigen::VectorXf& clm,
    return nb_fails;
 }
 
+/* This function provides the SH expansion for a diffuse function up to order
+ * 19 using Ramamoorthi's formula. First the clamped cosine is decomposed into
+ * zonal and the shCoeffs vector is then filled.
+ */
+Eigen::VectorXf DiffuseCoeffs(int order) {
+   assert(order < 19);
+
+   const float pisqrt = sqrt(M_PI);
+   Eigen::VectorXf zhCoeffs(19);
+	zhCoeffs[0]  = pisqrt/2.0;
+	zhCoeffs[1]  = sqrt(M_PI/3.0);
+	zhCoeffs[2]  = sqrt(5.0*M_PI)/8.0;
+	zhCoeffs[3]  = 0.0;
+	zhCoeffs[4]  = -pisqrt/16.0;
+	zhCoeffs[5]  = 0.0;
+	zhCoeffs[6]  = sqrt(13.0*M_PI)/128.0;
+	zhCoeffs[7]  = 0.0;
+	zhCoeffs[8]  = -sqrt(17.0*M_PI)/256.0;
+	zhCoeffs[9]  = 0.0;
+	zhCoeffs[10] = 7.0*sqrt(7.0*M_PI/3.0)/1024.0;
+	zhCoeffs[11] = 0.0;
+	zhCoeffs[12] = -15.0*pisqrt/2048;
+	zhCoeffs[13] = 0.0;
+	zhCoeffs[14] = 33.0*sqrt(29.0*M_PI)/32768.0;
+	zhCoeffs[15] = 0.0;
+	zhCoeffs[16] = -143.0*sqrt(11.0*M_PI/3.0)/65536.0;
+	zhCoeffs[17] = 0.0;
+	zhCoeffs[18] = 143.0*sqrt(37.0*M_PI)/262144.0;
+
+   const int vsize = (order+1)*(order+1);
+   Eigen::VectorXf shCoeffs = Eigen::VectorXf::Zero(vsize);
+   for(int l=0; l<order; ++l) {
+      const int index = (l+1)*l;
+      shCoeffs[index] = zhCoeffs[l];
+   }
+
+   return shCoeffs;
+}
+
+template<class SH, class Vector>
+Eigen::VectorXf PowerCosineCoeffs(const Vector& w, int n, int order) {
+
+   assert(order < 6);
+   Eigen::VectorXf zhCoeffs(19);
+   if(n == 1) {
+      zhCoeffs[0] = 1.0f / sqrt(4*M_PI);
+      zhCoeffs[1] = (3.0f / 8.0f) * sqrt(3.0f / M_PI);
+      zhCoeffs[2] = 1.0f / sqrt(5*M_PI);
+      zhCoeffs[3] = sqrt(7.0f / M_PI) / 16.0f;
+      zhCoeffs[4] = 0.0f;
+      zhCoeffs[5] = - sqrt(11.0f / M_PI) / 128.0f;
+   } else {
+      throw;
+   }
+
+   const int vsize = (order+1)*(order+1);
+   Eigen::VectorXf shCoeffs = SH::FastBasis(w, order);
+   for(int l=0; l<order; ++l) {
+      for(int m=0; m<2*l+1; ++m) {
+        const int index = l*l + m;
+        shCoeffs[index] *= sqrt(4*M_PI / (2*l+1)) * zhCoeffs[l];
+      }
+   }
+   return shCoeffs;
+}
+
+/* Evaluate the SH decomposition of a phong lobe using Monte-Carlo integration.
+ */
+template<class SH, class Vector>
+Eigen::VectorXf PowerCosineCoeffsMC(const Vector& w, int n, int order) {
+   Eigen::VectorXf shCoeffs((order+1)*(order+1));
+
+   int N = 100000;
+   for(int i=0; i<N; ++i) {
+      const Vector dir = Sample();
+      const float cs = glm::clamp(Vector::Dot(w, dir), 0.0f, 1.0f);
+      const float fw = (n+1)*pow(cs, n) / (2.0*M_PI);
+      shCoeffs += fw * SH::FastBasis(dir, order);
+   }
+   shCoeffs *= 4.0*M_PI / float(N);
+
+   return shCoeffs;
+}
+
+/* Compute the integral of the spherical function defined by the Functor `f`
+ * over the spherical triangle using MC.
+ */
+template<class Functor>
+std::pair<float,float> MonteCarlo(const Functor& f,
+                                  const Triangle& triangle) {
+
+   static std::mt19937 gen(0);
+   static std::uniform_real_distribution<float> dist(0.0,1.0);
+
+   // Number of MC samples
+   const int M = 10000000;
+   float mean = 0.0f;
+   float var  = 0.0f;
+   for(int k=0; k<M; ++k) {
+
+#ifdef USE_TRIANGLE_SAMPLING
+      float pdf;
+      const Vector d = SampleSphericalTriangle(triangle, pdf);
+#else // UNIFORM SAMPLING
+      const float pdf = 1.0f / (4.0f*M_PI);
+      const Vector d  = Sample();
+#endif
+
+      if(HitTriangle(triangle, d)) {
+         const auto val = f(d) / pdf;
+         mean += val;
+         var  += val*val;
+      }
+
+   }
+
+   mean /= M;
+   var   = var / (M-1) - mean*mean;
+   return std::pair<float,float>(mean, 5.0f*sqrt(var/M));
+}
+
+/* Check if the integration of the spherical function with SH coeffs `clm` over
+ * the spherical triangle `triangle` is the same if done using ZH expansion +
+ * Arvo's integral or MC method.
+ */
+template<class Functor>
+int CheckSHIntegration(const Eigen::VectorXf& clm,
+                       const Functor& f,
+                       const Triangle& tri,
+                       float Epsilon = 1.0E-3) {
+
+   std::cout << "Testing the analytical integration with:" << std::endl;
+   std::cout << " + Triangle ABC" << std::endl;
+   std::cout << "   + A = : " << tri[0].A << std::endl;
+   std::cout << "   + B = : " << tri[1].A << std::endl;
+   std::cout << "   + C = : " << tri[2].A << std::endl;
+
+   const int order = sqrt(clm.size())-1;
+   int nb_fails = 0;
+
+   // Monte-Carlo solution
+   const auto mcFnI = MonteCarlo<CosPowFunctor>(f, tri);
+
+   // Analytical solution
+   const auto basis = SamplingBlueNoise<Vector>(2*order+1);
+   const auto shI = computeSHIntegral<Triangle, Vector, SH>(clm, basis, tri);
+
+   if(!closeTo(shI, mcFnI)) {
+      ++nb_fails;
+
+      std::cout << "Error: Monte-Carlo (Fn) = " << mcFnI.first
+                << "(±" << mcFnI.second << ")"
+                << " ≠ Analytical = " << shI << std::endl;
+   } else {
+      std::cout << "Works! Monte-Carlo (Fn) = " << mcFnI.first
+                << "(±" << mcFnI.second << ")"
+                << " = Analytical = " << shI << std::endl;
+   }
+
+   std::cout << std::endl;
+   return nb_fails;
+}
+
 int main(int argc, char** argv) {
 
    int nb_fails = 0;
-
 
    /* Check the basic elements of the ZH decomposition */
    nb_fails += CheckLegendreExpansion();
@@ -445,6 +619,7 @@ int main(int argc, char** argv) {
    queries.push_back(glm::normalize(glm::vec3(1,0,0)));
    queries.push_back(glm::normalize(glm::vec3(1,1,1)));
 
+#ifdef SKIP
    // Using the canonical frame
    basis.clear();
    basis.push_back(glm::normalize(glm::vec3(0,0,1)));
@@ -475,6 +650,7 @@ int main(int argc, char** argv) {
    basis.clear();
    basis = SamplingBlueNoise<Vector>(2*order+1);
    nb_fails += CheckZHDecomposition(basis, queries);
+#endif
 
    /* SH Integration using the analytical form VS MonteCarlo */
    order = 2;
@@ -485,6 +661,7 @@ int main(int argc, char** argv) {
    auto B = glm::vec3(0.0, 0.5, 1.0);
    auto C = glm::vec3(0.5, 0.0, 1.0);
    auto tri = Triangle(glm::normalize(A), glm::normalize(B), glm::normalize(C));
+#ifdef SKIP
    nb_fails += CheckMatrixOrder(clm, tri);
    nb_fails += CheckSHIntegration(clm, tri);
 
@@ -507,6 +684,56 @@ int main(int argc, char** argv) {
    tri = Triangle(glm::normalize(A), glm::normalize(B), glm::normalize(C));
    nb_fails += CheckMatrixOrder(clm, tri);
    nb_fails += CheckSHIntegration(clm, tri);
+
+   /* SH Integration using the analytical form VS MonteCarlo */
+   order = 5;
+   const CosPowFunctor f;
+   clm = DiffuseCoeffs(order);
+   A = glm::vec3(0.0, 0.0, 1.0);
+   B = glm::vec3(0.0, 0.5, 1.0);
+   C = glm::vec3(0.5, 0.0, 1.0);
+   tri = Triangle(glm::normalize(A), glm::normalize(B), glm::normalize(C));
+   std::cout << "Analytical integration compared to clamped cosine" << std::endl;
+   nb_fails += CheckSHIntegration<CosPowFunctor>(clm, f, tri);
+#endif
+
+
+   /* SH Integration using the analytical form VS MonteCarlo */
+   int power = 1;
+   order = 5;
+   CosPowFunctor phong = CosPowFunctor(power);
+   basis = SamplingBlueNoise<Vector>((order+1)*(order+1));
+   clm   = ProjectToSH<CosPowFunctor, Vector, SH>(phong, basis);
+   A = glm::vec3(0.0, 0.0, 1.0);
+   B = glm::vec3(0.0, 0.5, 1.0);
+   C = glm::vec3(0.5, 0.0, 1.0);
+   tri = Triangle(glm::normalize(A), glm::normalize(B), glm::normalize(C));
+   std::cout << "Analytical integration compared to power cosine "
+             << "(" << power << ")" << std::endl;
+   nb_fails += CheckSHIntegration<CosPowFunctor>(clm, phong, tri);
+
+   // Exponent 1 Phong lobe using the analytical forms for the ZH coeffs
+   phong = CosPowFunctor(power);
+   clm   = PowerCosineCoeffsMC<SH, Vector>(Vector(0,0,1), power, order);
+   std::cout << "Analytical integration compared to power cosine "
+             << "(" << power << ")" << std::endl;
+   nb_fails += CheckSHIntegration<CosPowFunctor>(clm, phong, tri);
+
+   // Exponent 8 Phong lobe
+   power = 8;
+   phong = CosPowFunctor(power);
+   clm   = ProjectToSH<CosPowFunctor, Vector, SH>(phong, basis);
+   std::cout << "Analytical integration compared to power cosine "
+             << "(" << power << ")" << std::endl;
+   nb_fails += CheckSHIntegration<CosPowFunctor>(clm, phong, tri);
+
+   // Exponent 10 Phong lobe
+   power = 10;
+   phong = CosPowFunctor(power);
+   clm   = ProjectToSH<CosPowFunctor, Vector, SH>(phong, basis);
+   std::cout << "Analytical integration compared to power cosine "
+             << "(" << power << ")" << std::endl;
+   nb_fails += CheckSHIntegration<CosPowFunctor>(clm, phong, tri);
 
    if(nb_fails == 0) {
       return EXIT_SUCCESS;
