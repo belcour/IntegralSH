@@ -472,28 +472,66 @@ Eigen::VectorXf DiffuseCoeffs(int order) {
 template<class SH, class Vector>
 Eigen::VectorXf PowerCosineCoeffs(const Vector& w, int n, int order) {
 
-   assert(order < 6);
-   Eigen::VectorXf zhCoeffs(19);
-   if(n == 1) {
-      zhCoeffs[0] = 1.0f / sqrt(4*M_PI);
-      zhCoeffs[1] = (3.0f / 8.0f) * sqrt(3.0f / M_PI);
-      zhCoeffs[2] = 1.0f / sqrt(5*M_PI);
-      zhCoeffs[3] = sqrt(7.0f / M_PI) / 16.0f;
-      zhCoeffs[4] = 0.0f;
-      zhCoeffs[5] = - sqrt(11.0f / M_PI) / 128.0f;
-   } else {
-      throw;
-   }
+	int n2 = n*n;
+	int n3 = n2*n;
+	int n4 = n3*n;
+	int n5 = n4*n;
+
+	float pi = M_PI;
+   auto zhCoeffs = Eigen::VectorXf(19);
+	zhCoeffs[0] =            sqrt(pi)  / (1+n);
+	zhCoeffs[1] =            sqrt(3*pi) / (2+n);
+	zhCoeffs[2] = n          * sqrt(5*pi) / (3+4*n+n2);
+	zhCoeffs[3] = (n-1)         * sqrt(7*pi) / (8+6*n+n2);
+	zhCoeffs[4] = 3*(n2-2*n)       * sqrt(pi)  / (15+23*n+9*n2+n3);
+	zhCoeffs[5] = (3-4*n+n2)       * sqrt(11*pi) / (48+44*n+12*n2+n3);
+	zhCoeffs[6] = (n3-6*n2+8*n)       * sqrt(13*pi) / (105+176*n+86*n2+16*n3+n4);
+	zhCoeffs[7] = (-15 + 23*n - 9*n2 +n3)    * sqrt(15*pi) / (384 + 400*n + 140*n2 + 20*n3 + n4);
+	zhCoeffs[8] = (-48*n + 44*n2 - 12*n3 + n4)   * sqrt(17*pi) / (945 + 1689*n + 950*n2 + 230*n3 + 25*n4 + n5);
+	zhCoeffs[9] = (105 - 176*n + 86*n2 - 16*n3 + n4) * sqrt(19*pi) / (3840 + 4384*n + 1800*n2 + 340*n3 + 30*n4 + n5);
+	zhCoeffs[10] = ((-8 + n)*(-6 + n)*(-4 + n)*(-2 + n)*n*sqrt(21*pi))            /((1 + n)*(3 + n)*(5 + n)*(7 + n)*(9 + n)*(11 + n));
+	zhCoeffs[11] = ((-9 + n)*(-7 + n)*(-5 + n)*(-3 + n)*(-1 + n)*sqrt(23*pi))          /((2 + n)*(4 + n)*(6 + n)*(8 + n)*(10 + n)*(12 + n));
+	zhCoeffs[12] = (5*(-10 + n)*(-8 + n)*(-6 + n)*(-4 + n)*(-2 + n)*n*sqrt(pi))          /((1 + n)*(3 + n)*(5 + n)*(7 + n)*(9 + n)*(11 + n)*(13 + n));
+
+	zhCoeffs[13] = 27.009229429366766/(2+ n) - 810.276882881003/(4+ n)
+					+ 6887.353504488525/(6 + n) - 24925.660301958473/(8 + n)
+					+ 43619.90552842733/(10 + n) - 36482.102805593764/(12 + n)
+					+ 11692.981668459539/(14 + n);
+	zhCoeffs[14] = -1.99941/(1.+ n) + 209.938/(3. + n)
+					- 3568.94/(5. + n) + 22603.3/(7. + n)
+					- 67809.9/(9. + n) + 103975./(11. + n)
+					- 78769.1/(13. + n) + 23371./(15. + n);
+	zhCoeffs[15] = -31.008/(2. + n) + 1229.99/(4. + n)
+					- 14021.8/(6. + n) + 70109.2/(8. + n)
+					- 179168./(10. + n) + 244320./(12. + n)
+					- 169145./(14. + n) + 46716.1/(16. + n);
+	zhCoeffs[16] = 1.99954/(1. + n) - 271.938/(3. + n)
+					+ 6027.95/(5. + n) - 50634.8/(7. + n)
+					+ 207964./(9. + n) - 462143./(11. + n)
+					+ 567176./(13. + n) - 361496./(15. + n)
+					+ 93386.6/(17. + n);
+	zhCoeffs[17] = 35.0071/(2. + n) - 1773.69/(4. + n)
+					+ 26073.3/(6. + n) - 171339./(8. + n)
+					+ 594927./(10. + n) - 1.16822e6/(12. + n)
+					+ 1.30301e6/(14. + n) - 769399./(16. + n)
+					+ 186692./(18. + n);
+	zhCoeffs[18] = - 1.99964/(1. + n) + 341.938/(3. + n)
+					- 9574.25/(5. + n) + 102764./(7. + n)
+					- 550520./(9. + n) + 1.65156e6/(11. + n)
+					- 2.90274e6/(13. + n) + 2.96654e6/(15. + n)
+					- 1.6316e6/(17. + n) + 373241./(19. + n);
+   zhCoeffs *= (n+1)/(2*M_PI);
+   //zhCoeffs.segment(n+1, 18-n) = Eigen::VectorXf::Zero(18-n);
 
    const int vsize = (order+1)*(order+1);
    Eigen::VectorXf shCoeffs = SH::FastBasis(w, order);
-   for(int l=0; l<order; ++l) {
-      for(int m=0; m<2*l+1; ++m) {
-        const int index = l*l + m;
-        shCoeffs[index] *= sqrt(4*M_PI / (2*l+1)) * zhCoeffs[l];
-      }
+
+   Eigen::VectorXf res = Eigen::VectorXf::Zero(vsize);
+   for(int i=0; i<vsize; ++i) {
+      const int l = sqrt(i);
+      res[i] = shCoeffs[i] * sqrt(4*M_PI / (2*l+1)) * zhCoeffs[l];
    }
-   return shCoeffs;
+   return res;
 }
 
 /* Evaluate the SH decomposition of a phong lobe using Monte-Carlo integration.
@@ -715,6 +753,10 @@ int main(int argc, char** argv) {
    // Exponent 1 Phong lobe using the analytical forms for the ZH coeffs
    phong = CosPowFunctor(power);
    clm   = PowerCosineCoeffsMC<SH, Vector>(Vector(0,0,1), power, order);
+   auto clmD = PowerCosineCoeffs<SH, Vector>(Vector(0,0,1), power, order);
+   std::cout << "MC evaluation: " << clm.transpose() << std::endl;
+   std::cout << "An evaluation: " << clmD.transpose() << std::endl;
+
    std::cout << "Analytical integration compared to power cosine "
              << "(" << power << ")" << std::endl;
    nb_fails += CheckSHIntegration<CosPowFunctor>(clm, phong, tri);
