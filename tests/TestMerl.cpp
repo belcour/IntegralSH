@@ -53,8 +53,6 @@ int TestMerlProjection(const std::string& filename) {
    int order = 18;
    int elev  = 90;
 
-   std::vector<Eigen::MatrixXf> matrices;
-   matrices.reserve(elev);
 
    // Load the BRDF
    MerlBRDF brdf;
@@ -68,30 +66,11 @@ int TestMerlProjection(const std::string& filename) {
       idirs.push_back(wo);
    }
 
-   /*
-   std::vector<Vector> odirs = SamplingFibonacci<Vector>(10000);
-   for(auto& wi : idirs) {
-
-      MerlSlice slice(brdf, wi);
-      Eigen::MatrixXf matrix(SH::Terms(order), 3);
-
-      for(auto& wo : odirs) {
-         // Do not print value for below horizon vectors
-         if(wo.z > 0.0) {
-            const auto rgb = slice(wo);
-            const auto ylm = SH::FastBasis(wo, order);
-
-            matrix.col(0) += rgb[0]*ylm;
-            matrix.col(1) += rgb[1]*ylm;
-            matrix.col(2) += rgb[2]*ylm;
-         }
-      }
-
-      matrix *= 4.0*M_PI / float(odirs.size());
-      matrices.push_back(matrix);
-   }*/
+   // Get the SH expansion of rho as a list of SH vectors each of a particular
+   // incidence. This is the method of Sillion et al.
+   std::vector<Eigen::MatrixXf> matrices;
+   matrices.reserve(elev);
    matrices = brdf.projectToSH<Eigen::Vector3f, Vector, SH>(elev, order);
-
 
    // Print values
    int col = 0;

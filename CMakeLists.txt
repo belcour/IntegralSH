@@ -35,3 +35,5 @@ add_test(TestSpheInt  TestSpheInt)
 # Add SH examples
 add_executable (TestMerl  tests/TestMerl.cpp)
 target_compile_features(TestMerl PRIVATE cxx_range_for)
+add_executable (TestProd  tests/TestProduct.cpp)
+target_compile_features(TestProd PRIVATE cxx_range_for)
