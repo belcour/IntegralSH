@@ -11,6 +11,25 @@
 // Local include
 #include "DirectionsSampling.hpp"
 
+/* This header provide multiple ways to project spherical function to Spherical Harmonics
+ * vectors.
+ *
+ *    + 'ProjectToSH' return the SH coefficient vector when the Functor to be projected
+ *      is bandlimited to the max order of SH. Warning: do not use with highly varying
+ *      functions! This projection will probably behave very badly. In such case, it is
+ *      advised to use the 'ProjectToShMC' method.
+ *
+ *    + 'ProjectToShMC' return the SH coefficient vector by integrating <f·Ylm> using
+ *      Monte Carlo integration. It is possible to choose the type of random or quasi-
+ *      random sequence for the integration.
+ *
+ *    + 'TripleTensorProduct' return the premultiplied triple tensor product: the
+ *      integral of <Ylm x Ylm x Ylm> multiplied by the SH coefficients 'clm' of 'f'.
+ *      The integral is computed using Monte Carlo, as 'ProjectToShMC' does.
+ *
+ * TODO: Template the direction sequence.
+ */
+
 #define USE_FIBONACCI_SEQ
 //#define USE_BLUENOISE_SEQ
 
@@ -88,7 +107,9 @@ Eigen::VectorXf ProjectToShMC(const Functor& f, int order, int M=100000) {
  *      that is order '2n-1'.
  */
 template<class SH, class Vector>
-Eigen::MatrixXf TripleTensorProduct(const Eigen::VectorXf& ylm, bool truncated=true) {
+Eigen::MatrixXf TripleTensorProduct(const Eigen::VectorXf& ylm,
+                                    bool truncated=true,
+                                    int nDirections=100000) {
 
    // Compute the max order
    const int vsize = ylm.size();
@@ -99,7 +120,6 @@ Eigen::MatrixXf TripleTensorProduct(const Eigen::VectorXf& ylm, bool truncated=t
 
    // Take a uniformly distributed point sequence and integrate the triple tensor
    // for each SH band
-   const int nDirections = 100000;
 #if   defined(USE_FIBONACCI_SEQ)
    const std::vector<Vector> directions = SamplingFibonacci<Vector>(nDirections);
 #elif defined(USE_BLUENOISE_SEQ)
@@ -133,7 +153,8 @@ Eigen::MatrixXf TripleTensorProduct(const Eigen::VectorXf& ylm, bool truncated=t
 template<class SH, class Vector>
 std::vector<Eigen::MatrixXf> TripleTensorProduct(
                                  const std::vector<Eigen::VectorXf>& ylms,
-                                 bool truncated=true) {
+                                 bool truncated=true,
+                                 int nDirections=100000) {
 
    // Compute the max order
    const int vsize = ylms[0].size();
@@ -144,7 +165,6 @@ std::vector<Eigen::MatrixXf> TripleTensorProduct(
 
    // Take a uniformly distributed point sequence and integrate the triple tensor
    // for each SH band
-   const int nDirections = 100000;
 #if   defined(USE_FIBONACCI_SEQ)
    const std::vector<Vector> directions = SamplingFibonacci<Vector>(nDirections);
 #elif defined(USE_BLUENOISE_SEQ)

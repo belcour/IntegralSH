@@ -110,6 +110,8 @@ int IntegrateProduct() {
    const Eigen::VectorXf cosFYlm = fMat.block(0, 0, msize, nsize) * cosYlm;
 
    const int nDirections = 100;
+   std::cout << "# Testing against " << nDirections
+             << " [quasi]-random directions" << std::endl;
    const std::vector<Vector> directions = SamplingFibonacci<Vector>(nDirections);
    for(auto& w : directions) {
       const auto ylm = SH::FastBasis(w, morder);
@@ -129,27 +131,7 @@ int IntegrateProduct() {
                    << prodVal << " ≠ " << altVal << std::endl;
       }
    }
-/*
-   // Projec the product using Monte-Carlo projection on SH coefficients.
-   std::cout << "# Projection using MC evaluation and product SH evals" << std::endl;
-   const auto prodSH  = ProductSH(cosYlm, fYlm);
-   const auto projYlm = ProjectToShMC<ProductSH, Vector, SH>(prodSH, order, 100000);
-   assert(projYlm.size() == nsize);
 
-   // Print values
-   std::cout << "# Export of data" << std::endl;
-   const int   elev   = 180;
-   for(int i=0; i<elev; ++i) {
-      const float theta = 2.0*M_PI * i / float(elev);
-      const auto w = Vector(sin(theta), 0, cos(theta));
-      const auto ylm = SH::FastBasis(w, morder);
-      const auto rlm = ylm.segment(0, nsize);
-      std::cout << theta << " " << cosFYlm.dot(ylm)
-                         << " " << projYlm.dot(rlm)
-                         << " " << (cosYlm.dot(rlm))*(fYlm.dot(rlm))
-                         << std::endl;
-   }
-*/
    if(nb_fails == 0) {
       std::cout << "# Test passed!" << std::endl;
    } else {
@@ -159,6 +141,74 @@ int IntegrateProduct() {
    return nb_fails;
 }
 
+/* Take the product of a random function with a shading cosine and perform the
+ * integral of this function over a spherical triangle. Compare this with the
+ * Monte-Carlo integral.
+ */
+int IntegrateProducts() {
+   int nb_fails = 0;
+
+   const bool trunc = false;
+   const int order  = 9;
+   const int morder = trunc ? order : 2*order-1;
+   const int nsize = SH::Terms(order);
+   const int msize = trunc ? nsize : SH::Terms(morder);
+   const Eigen::VectorXf cosYlm = DiffuseSHDecomposition(order);
+   std::vector<Eigen::VectorXf> fYlms;
+   fYlms.push_back(0.1 * cosYlm);//Eigen::VectorXf::Random(SH::Terms(order)).cwiseAbs();
+   fYlms.push_back(1.0 * cosYlm);//Eigen::VectorXf::Random(SH::Terms(order)).cwiseAbs();
+   fYlms.push_back(2.0 * cosYlm);//Eigen::VectorXf::Random(SH::Terms(order)).cwiseAbs();
+
+   std::vector<Eigen::VectorXf> cosFYlms;
+
+   // Precompute the matrix precomputed triple tensor product to evaluate the
+   // product of (f · cos)(w) using SH.
+   std::cout << "# Precomputing the TripleTensorProduct" << std::endl;
+   const auto fMats = TripleTensorProduct<SH, Vector>(fYlms, trunc);
+   for(const auto& fMat : fMats) {
+      cosFYlms.push_back(fMat.block(0, 0, msize, nsize) * cosYlm);
+   }
+
+   const int nDirections = 100;
+   std::cout << "# Testing against " << nDirections
+             << " [quasi]-random directions" << std::endl;
+   const std::vector<Vector> directions = SamplingFibonacci<Vector>(nDirections);
+   for(auto& w : directions) {
+      const auto ylm = SH::FastBasis(w, morder);
+      const auto rlm = ylm.segment(0, nsize);
+
+      // Compute the product of f and cos using the individual values
+      const float cosVal  = cosYlm.dot(rlm);
+      std::vector<float> prodVals;
+      for(const auto& fYlm : fYlms) {
+         const float fVal    = fYlm.dot(rlm);
+         prodVals.push_back(cosVal*fVal);
+      }
+
+      // Compute the product of f and cos using the precomputed product
+      std::vector<float> altVals;
+      for(const auto& cosFYlm : cosFYlms) {
+         altVals.push_back(cosFYlm.dot(ylm));
+      }
+
+      assert(altVals.size() == prodVals.size());
+      for(auto i=0; i<altVals.size(); ++i) {
+         if(! closeTo(prodVals[i], altVals[i])) {
+            ++nb_fails;
+            std::cout << "# for direction " << w << ": "
+                      << prodVals[i] << " ≠ " << altVals[i] << std::endl;
+         }
+      }
+   }
+
+   if(nb_fails == 0) {
+      std::cout << "# Test passed!" << std::endl;
+   } else {
+      std::cout << "# Test failed!" << std::endl;
+   }
+   std::cout << std::endl;
+   return nb_fails;
+}
 
 int main(int argc, char** argv) {
 
@@ -166,6 +216,7 @@ int main(int argc, char** argv) {
 
    // Load an example
    nb_fails += IntegrateProduct();
+   nb_fails += IntegrateProducts();
 
    if(nb_fails > 0) {
       return EXIT_FAILURE;
