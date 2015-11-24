@@ -210,13 +210,115 @@ int IntegrateProducts() {
    return nb_fails;
 }
 
+/* Compute the integral of the spherical function defined by the SH
+ * coefficients `clm` over the spherical triangle using MC.
+ */
+std::pair<float,float> MonteCarloSH(const Eigen::VectorXf& alm,
+                                    const Eigen::VectorXf& blm,
+                                    const Triangle& triangle) {
+
+   static std::mt19937 gen(0);
+   static std::uniform_real_distribution<float> dist(0.0,1.0);
+
+   const int order = sqrt(alm.size());
+
+   // Number of MC samples
+   const int M = 10000000;
+   float mean = 0.0f;
+   float var  = 0.0f;
+   for(int k=0; k<M; ++k) {
+
+#ifdef USE_TRIANGLE_SAMPLING
+      float pdf;
+      const Vector d = SampleSphericalTriangle(triangle, pdf);
+#else // UNIFORM SAMPLING
+      const float pdf = 1.0f / (4.0f*M_PI);
+      const Vector d  = Sample();
+#endif
+
+      const auto ylm = SHEvalFast<Vector>(d, order-1);
+
+      if(HitTriangle(triangle, d)) {
+         const auto val = (ylm.dot(alm)*ylm.dot(blm)) / pdf;
+         mean += val;
+         var  += val*val;
+      }
+
+   }
+
+   mean /= M;
+   var   = var / (M-1) - mean*mean;
+   return std::pair<float,float>(mean, 5.0f*sqrt(var/M));
+}
+
+/* Check if the integration of the spherical function with SH coeffs `clm`
+ * over the spherical triangle `triangle` is the same if done using ZH
+ * expansion + Arvo's integral or MC method.
+ */
+int CheckSHIntegration(const Eigen::VectorXf& alm,
+                       const Eigen::VectorXf& blm,
+                       const Triangle& tri,
+                       float Epsilon = 1.0E-3) {
+
+   std::cout << "Testing the analytical integration with:" << std::endl;
+   std::cout << " + Triangle ABC" << std::endl;
+   std::cout << "   + A = : " << tri[0].A << std::endl;
+   std::cout << "   + B = : " << tri[1].A << std::endl;
+   std::cout << "   + C = : " << tri[2].A << std::endl;
+   std::cout << " + SH expansion of the integrand" << std::endl;
+   std::cout << "   + alm = [" << alm.transpose() << "]" << std::endl;
+   std::cout << "   + blm = [" << blm.transpose() << "]" << std::endl;
+
+   assert(alm.size() == blm.size());
+   const int order = sqrt(alm.size())-1;
+   int nb_fails = 0;
+
+   // Monte-Carlo solution
+   const auto mcI = MonteCarloSH(alm, blm, tri);
+
+   /* Analytical solution */
+
+   // Get the Zonal weights matrix and the Zlm -> Ylm conversion matrix
+   // and compute the product of the two: `Prod = A x Zw`.
+   const auto basis = SamplingBlueNoise<Vector>(2*order+1);
+   const auto ZW    = ZonalWeights<Vector>(basis);
+   const auto Y     = ZonalExpansion<SH, Vector>(basis);
+   const auto A     = computeInverse(Y);
+   const auto TPM   = TripleTensorProduct<SH, Vector>(alm, true);
+   const auto prod  = (A*ZW).transpose();
+   const auto zlm   = prod * (TPM*blm);
+   const auto shI   = zlm.dot(AxialMoments<Triangle, Vector>(tri, basis));
+
+   if(!closeTo(shI, mcI)) {
+      ++nb_fails;
+
+      std::cout << "Error: Monte-Carlo = " << mcI.first
+                << "(±" << mcI.second << ")"
+                << " ≠ Analytical = " << shI << std::endl;
+   } else {
+      std::cout << "Test passed!" << std::endl;
+   }
+
+   std::cout << std::endl;
+   return nb_fails;
+}
+
 int main(int argc, char** argv) {
 
    int nb_fails = 0;
 
+   /*
    // Load an example
    nb_fails += IntegrateProduct();
    nb_fails += IntegrateProducts();
+   */
+
+   // Test spherical integration of products
+   int order  = 5;
+   Vector A( 0.5,-0.5, 1.0), B(-0.5,-0.5, 1.0), C( 0.0, 0.5, 1.0);
+   auto tri = Triangle(Vector::Normalize(A), Vector::Normalize(B), Vector::Normalize(C));
+   Eigen::VectorXf clm = DiffuseSHDecomposition(order);
+   nb_fails += CheckSHIntegration(clm, clm, tri);
 
    if(nb_fails > 0) {
       return EXIT_FAILURE;
