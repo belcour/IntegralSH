@@ -87,49 +87,6 @@ Eigen::VectorXf DiffuseSHDecomposition(int order) {
    return shCoeffs;
 }
 
-/* Compute the triple tensor product \int Ylm * Ylm * Ylm
- *
- * ## Arguments:
- *
- *    + 'ylm' is the input spherical function SH coeffcients. They will be
- *      prefactored to the triple product tensor to build the matrix.
- *
- *    + 'truncated' allows to export either the truncated matrix (up to order
- *      'n', where 'n' is the order the input SH coeffs 'ylm') or the full matrix
- *      that is order '2n-1'.
- */
-#define USE_FIBONACCI_SEQ
-//#define USE_BLUENOISE_SEQ
-Eigen::MatrixXf TripleTensorProduct(const Eigen::VectorXf& ylm, bool truncated=true) {
-
-   // Compute the max order
-   const int vsize = ylm.size();
-   const int order = (truncated) ? sqrt(vsize)-1 : 2*sqrt(vsize)-2;
-   const int msize = (truncated) ? vsize         : SH::Terms(order);
-
-   Eigen::MatrixXf res(msize, msize);
-
-   // Take a uniformly distributed point sequence and integrate the triple tensor
-   // for each SH band
-   const int nDirections = 100000;
-#if   defined(USE_FIBONACCI_SEQ)
-   const std::vector<Vector> directions = SamplingFibonacci<Vector>(nDirections);
-   for(auto& w : directions) {
-#elif defined(USE_BLUENOISE_SEQ)
-   const std::vector<Vector> directions = SamplingBlueNoise<Vector>(nDirections);
-   for(auto& w : directions) {
-#else
-   for(int i=0; i<nDirections; ++i) {
-      const Vector w  = Sample();
-#endif
-      const Eigen::VectorXf clm = SH::FastBasis(w, order);
-      res += clm.segment(0, vsize).dot(ylm) * clm * clm.transpose();
-   }
-
-   res *= 4.0f * M_PI / float(nDirections);
-   return res;
-}
-
 /* Take the product of a random function with a shading cosine and perform the
  * integral of this function over a spherical triangle. Compare this with the
  * Monte-Carlo integral.
@@ -149,18 +106,18 @@ int IntegrateProduct() {
    // Precompute the matrix precomputed triple tensor product to evaluate the
    // product of (f · cos)(w) using SH.
    std::cout << "# Precomputing the TripleTensorProduct" << std::endl;
-   const Eigen::MatrixXf fMat    = TripleTensorProduct(fYlm, trunc);
+   const Eigen::MatrixXf fMat    = TripleTensorProduct<SH, Vector>(fYlm, trunc);
    const Eigen::VectorXf cosFYlm = fMat.block(0, 0, msize, nsize) * cosYlm;
 
-   /*
    const int nDirections = 100;
    const std::vector<Vector> directions = SamplingFibonacci<Vector>(nDirections);
    for(auto& w : directions) {
-      const auto ylm = SH::FastBasis(w, order);
+      const auto ylm = SH::FastBasis(w, morder);
+      const auto rlm = ylm.segment(0, nsize);
 
       // Compute the product of f and cos using the individual values
-      const float cosVal  = cosYlm.dot(ylm);
-      const float fVal    = fYlm.dot(ylm);
+      const float cosVal  = cosYlm.dot(rlm);
+      const float fVal    = fYlm.dot(rlm);
       const float prodVal = cosVal*fVal;
 
       // Compute the product of f and cos using the precomputed product
@@ -172,8 +129,7 @@ int IntegrateProduct() {
                    << prodVal << " ≠ " << altVal << std::endl;
       }
    }
-   */
-
+/*
    // Projec the product using Monte-Carlo projection on SH coefficients.
    std::cout << "# Projection using MC evaluation and product SH evals" << std::endl;
    const auto prodSH  = ProductSH(cosYlm, fYlm);
@@ -193,7 +149,7 @@ int IntegrateProduct() {
                          << " " << (cosYlm.dot(rlm))*(fYlm.dot(rlm))
                          << std::endl;
    }
-
+*/
    if(nb_fails == 0) {
       std::cout << "# Test passed!" << std::endl;
    } else {

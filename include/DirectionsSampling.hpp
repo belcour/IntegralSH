@@ -6,6 +6,34 @@
 #include <limits>
 #include <chrono>
 
+/* Generate a uniform distribution of points on the sphere using random
+ * sampling with the STL uniform random number generator.
+ */
+template<class Vector>
+std::vector<Vector> SamplingRandom(int nb) {
+
+   std::mt19937 gen(std::chrono::system_clock::now().time_since_epoch().count());
+   std::uniform_real_distribution<float> dist(0.0,1.0);
+
+   std::vector<Vector> res;
+   res.reserve(nb);
+
+   for(int i=0; i<nb; ++nb) {
+      // Sample the cosine of the elevation
+      Vector w;
+      w.z = 2.0*dist(gen) - 1.0;
+      const float z2 = w.z*w.z;
+
+      // Sample the azimuth
+      const float phi = 2.0*M_PI*dist(gen);
+      w.x = sqrt(1.0f-z2) * cos(phi);
+      w.y = sqrt(1.0f-z2) * sin(phi);
+      res.push_back(w);
+   }
+
+   return res;
+}
+
 /* Compute the minimum dot distance between a set of directions and another
  * direction. The vectors are assumed to be normalized here.
  */
