@@ -430,45 +430,6 @@ int CheckSHIntegration(const Eigen::VectorXf& clm,
    return nb_fails;
 }
 
-/* This function provides the SH expansion for a diffuse function up to order
- * 19 using Ramamoorthi's formula. First the clamped cosine is decomposed into
- * zonal and the shCoeffs vector is then filled.
- */
-Eigen::VectorXf DiffuseCoeffs(int order) {
-   assert(order < 19);
-
-   const float pisqrt = sqrt(M_PI);
-   Eigen::VectorXf zhCoeffs(19);
-	zhCoeffs[0]  = pisqrt/2.0;
-	zhCoeffs[1]  = sqrt(M_PI/3.0);
-	zhCoeffs[2]  = sqrt(5.0*M_PI)/8.0;
-	zhCoeffs[3]  = 0.0;
-	zhCoeffs[4]  = -pisqrt/16.0;
-	zhCoeffs[5]  = 0.0;
-	zhCoeffs[6]  = sqrt(13.0*M_PI)/128.0;
-	zhCoeffs[7]  = 0.0;
-	zhCoeffs[8]  = -sqrt(17.0*M_PI)/256.0;
-	zhCoeffs[9]  = 0.0;
-	zhCoeffs[10] = 7.0*sqrt(7.0*M_PI/3.0)/1024.0;
-	zhCoeffs[11] = 0.0;
-	zhCoeffs[12] = -15.0*pisqrt/2048;
-	zhCoeffs[13] = 0.0;
-	zhCoeffs[14] = 33.0*sqrt(29.0*M_PI)/32768.0;
-	zhCoeffs[15] = 0.0;
-	zhCoeffs[16] = -143.0*sqrt(11.0*M_PI/3.0)/65536.0;
-	zhCoeffs[17] = 0.0;
-	zhCoeffs[18] = 143.0*sqrt(37.0*M_PI)/262144.0;
-
-   const int vsize = (order+1)*(order+1);
-   Eigen::VectorXf shCoeffs = Eigen::VectorXf::Zero(vsize);
-   for(int l=0; l<order; ++l) {
-      const int index = (l+1)*l;
-      shCoeffs[index] = zhCoeffs[l];
-   }
-
-   return shCoeffs;
-}
-
 template<class SH, class Vector>
 Eigen::VectorXf PowerCosineCoeffs(const Vector& w, int n, int order) {
 
@@ -726,7 +687,7 @@ int main(int argc, char** argv) {
    /* SH Integration using the analytical form VS MonteCarlo */
    order = 5;
    const CosPowFunctor f;
-   clm = DiffuseCoeffs(order);
+   clm = DiffuseCoeffsSH<glm::vec3>(glm::vec3(0,0,1), order);
    A = glm::vec3(0.0, 0.0, 1.0);
    B = glm::vec3(0.0, 0.5, 1.0);
    C = glm::vec3(0.5, 0.0, 1.0);
