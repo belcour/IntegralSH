@@ -488,9 +488,12 @@ Eigen::VectorXf PowerCosineCoeffs(const Vector& w, int n, int order) {
    Eigen::VectorXf shCoeffs = SH::FastBasis(w, order);
 
    Eigen::VectorXf res = Eigen::VectorXf::Zero(vsize);
-   for(int i=0; i<vsize; ++i) {
-      const int l = sqrt(i);
-      res[i] = shCoeffs[i] * sqrt(4*M_PI / (2*l+1)) * zhCoeffs[l];
+   for(int l=0; l<=order; ++l) {
+      const float factor = sqrt(4*M_PI / (2*l+1)) * zhCoeffs[l];
+      for(int m=0; m<2*l+1; ++m) {
+         const int i = l*l + m;
+         res[i] = factor * shCoeffs[i];
+      }
    }
    return res;
 }
@@ -699,15 +702,15 @@ int main(int argc, char** argv) {
 
    /* SH Integration using the analytical form VS MonteCarlo */
    int power = 1;
-   order = 5;
+   order = 15;
    CosPowFunctor phong = CosPowFunctor(power);
-   basis = SamplingBlueNoise<Vector>((order+1)*(order+1));
+   basis = SamplingFibonacci<Vector>((order+1)*(order+1));
    clm   = ProjectToSH<CosPowFunctor, Vector, SH>(phong, basis);
    A = glm::vec3(0.0, 0.0, 1.0);
    B = glm::vec3(0.0, 0.5, 1.0);
    C = glm::vec3(0.5, 0.0, 1.0);
    tri = Triangle(glm::normalize(A), glm::normalize(B), glm::normalize(C));
-   std::cout << "Analytical integration compared to power cosine "
+   std::cout << "Analytical integration (using 'ProjectToSH') compared to power cosine "
              << "(" << power << ")" << std::endl;
    nb_fails += CheckSHIntegration<CosPowFunctor>(clm, phong, tri);
 
@@ -715,10 +718,10 @@ int main(int argc, char** argv) {
    phong = CosPowFunctor(power);
    clm   = PowerCosineCoeffsMC<SH, Vector>(Vector(0,0,1), power, order);
    auto clmD = PowerCosineCoeffs<SH, Vector>(Vector(0,0,1), power, order);
-   std::cout << "MC evaluation: " << clm.transpose() << std::endl;
-   std::cout << "An evaluation: " << clmD.transpose() << std::endl;
+//   std::cout << "MC evaluation: " << clm.transpose() << std::endl;
+//   std::cout << "An evaluation: " << clmD.transpose() << std::endl;
 
-   std::cout << "Analytical integration compared to power cosine "
+   std::cout << "Analytical integration (using MC estimation of SH) compared to power cosine "
              << "(" << power << ")" << std::endl;
    nb_fails += CheckSHIntegration<CosPowFunctor>(clm, phong, tri);
 
@@ -726,7 +729,7 @@ int main(int argc, char** argv) {
    power = 8;
    phong = CosPowFunctor(power);
    clm   = ProjectToSH<CosPowFunctor, Vector, SH>(phong, basis);
-   std::cout << "Analytical integration compared to power cosine "
+   std::cout << "Analytical integration (using 'ProjectToSH') compared to power cosine "
              << "(" << power << ")" << std::endl;
    nb_fails += CheckSHIntegration<CosPowFunctor>(clm, phong, tri);
 
@@ -734,7 +737,7 @@ int main(int argc, char** argv) {
    power = 10;
    phong = CosPowFunctor(power);
    clm   = ProjectToSH<CosPowFunctor, Vector, SH>(phong, basis);
-   std::cout << "Analytical integration compared to power cosine "
+   std::cout << "Analytical integration (using 'ProjectToSH') compared to power cosine "
              << "(" << power << ")" << std::endl;
    nb_fails += CheckSHIntegration<CosPowFunctor>(clm, phong, tri);
 
