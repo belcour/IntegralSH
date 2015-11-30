@@ -90,7 +90,7 @@ inline Eigen::MatrixXf ZonalWeights(const std::vector<Vector>& directions) {
  * basis using the √(2l+1 / 4π) factor. It can later by applied to a zonal
  * vector using Eigen fast product: a.cwiseProduct(b)
  */
-Eigen::VectorXf ZonalNormalization(int order) {
+inline Eigen::VectorXf ZonalNormalization(int order) {
    Eigen::VectorXf res = Eigen::VectorXf(order);
    const float f = 1.0f/sqrt(4.0f*M_PI);
    for(int i=0; i<order; ++i) {
@@ -107,7 +107,7 @@ Eigen::VectorXf ZonalNormalization(int order) {
  *   z_i = P_i( d · w ),  where P_i is Legendre polynomial
  */
 template<class Vector>
-Eigen::VectorXf RotatedZH(const Vector& d, const Vector& w, int order) {
+inline Eigen::VectorXf RotatedZH(const Vector& d, const Vector& w, int order) {
 
    Eigen::VectorXf res = Eigen::VectorXf::Zero(order);
    const float z = Vector::Dot(d, w);
@@ -146,7 +146,7 @@ Eigen::VectorXf RotatedZH(const Vector& d, const Vector& w, int order) {
  * where z_{i,j} = Ylm_{i, 0}(w_j).
  */
 template<class Vector>
-Eigen::VectorXf ZHEvalFast(const std::vector<Vector>& dirs, const Vector& w) {
+inline Eigen::VectorXf ZHEvalFast(const std::vector<Vector>& dirs, const Vector& w) {
 
    // Get the number of elements to compute
    const int dsize = dirs.size();
@@ -191,7 +191,7 @@ Eigen::VectorXf ZHEvalFast(const std::vector<Vector>& dirs, const Vector& w) {
  * as the static function `SH::FastBasis(const Vector& w, int order)`.
  */
 template<class SH, class Vector>
-MatrixType ZonalExpansion(const std::vector<Vector>& directions) {
+inline MatrixType ZonalExpansion(const std::vector<Vector>& directions) {
 
    // Get the current band. Here I use a shifted order number. The integer
    // order is actually `order+1` to compute the number of rows and iterate

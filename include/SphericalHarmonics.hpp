@@ -73,7 +73,7 @@ inline Eigen::VectorXf ProjectToSH(const Functor& f,
  * to order `order` using Monte-Carlo integration.
  */
 template<class Functor, class Vector, class SH>
-Eigen::VectorXf ProjectToShMC(const Functor& f, int order, int M=100000) {
+inline Eigen::VectorXf ProjectToShMC(const Functor& f, int order, int M=100000) {
 
    std::mt19937 gen(0);
    std::uniform_real_distribution<float> dist(0.0,1.0);
@@ -107,9 +107,9 @@ Eigen::VectorXf ProjectToShMC(const Functor& f, int order, int M=100000) {
  *      that is order '2n-1'.
  */
 template<class SH, class Vector>
-Eigen::MatrixXf TripleTensorProduct(const Eigen::VectorXf& ylm,
-                                    bool truncated=true,
-                                    int nDirections=100000) {
+inline Eigen::MatrixXf TripleTensorProduct(const Eigen::VectorXf& ylm,
+                                           bool truncated=true,
+                                           int nDirections=100000) {
 
    // Compute the max order
    const int vsize = ylm.size();
@@ -151,10 +151,10 @@ Eigen::MatrixXf TripleTensorProduct(const Eigen::VectorXf& ylm,
  *      that is order '2n-1'.
  */
 template<class SH, class Vector>
-std::vector<Eigen::MatrixXf> TripleTensorProduct(
-                                 const std::vector<Eigen::VectorXf>& ylms,
-                                 bool truncated=true,
-                                 int nDirections=100000) {
+inline std::vector<Eigen::MatrixXf> TripleTensorProduct(
+                                       const std::vector<Eigen::VectorXf>& ylms,
+                                       bool truncated=true,
+                                       int nDirections=100000) {
 
    // Compute the max order
    const int vsize = ylms[0].size();

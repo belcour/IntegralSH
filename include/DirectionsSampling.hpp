@@ -1,5 +1,6 @@
 #pragma once
 
+// include STL
 #include <vector>
 #include <random>
 #include <cmath>
@@ -10,7 +11,7 @@
  * sampling with the STL uniform random number generator.
  */
 template<class Vector>
-std::vector<Vector> SamplingRandom(int nb) {
+inline std::vector<Vector> SamplingRandom(int nb) {
 
    std::mt19937 gen(std::chrono::system_clock::now().time_since_epoch().count());
    std::uniform_real_distribution<float> dist(0.0,1.0);
@@ -38,7 +39,7 @@ std::vector<Vector> SamplingRandom(int nb) {
  * direction. The vectors are assumed to be normalized here.
  */
 template<class Vector>
-float MinDotDistance(const std::vector<Vector>& dirs, const Vector& w) {
+inline float MinDotDistance(const std::vector<Vector>& dirs, const Vector& w) {
 
    // The set of testing direction is empty.
    if(dirs.size() == 0) {
@@ -57,7 +58,7 @@ float MinDotDistance(const std::vector<Vector>& dirs, const Vector& w) {
 /* _Sampling Blue Noise Directions_
  */
 template<class Vector>
-std::vector<Vector> SamplingBlueNoise(int nb, int MAX_TRY = 1000) {
+inline std::vector<Vector> SamplingBlueNoise(int nb, int MAX_TRY = 1000) {
 
    std::mt19937 gen(std::chrono::system_clock::now().time_since_epoch().count());
    std::uniform_real_distribution<float> dist(0.0,1.0);
@@ -104,7 +105,7 @@ std::vector<Vector> SamplingBlueNoise(int nb, int MAX_TRY = 1000) {
 /* _Sampling Fibonacci Directions_
  */
 template<class Vector>
-std::vector<Vector> SamplingFibonacci(int nb) {
+inline std::vector<Vector> SamplingFibonacci(int nb) {
 
    // Golden ratio
    const float gratio = (sqrt(5.0f)+1.0f)/2.0f;
