@@ -116,7 +116,7 @@ inline Eigen::MatrixXf TripleTensorProduct(const Eigen::VectorXf& ylm,
    const int order = (truncated) ? sqrt(vsize)-1 : 2*sqrt(vsize)-2;
    const int msize = (truncated) ? vsize         : SH::Terms(order);
 
-   Eigen::MatrixXf res(msize, msize);
+   Eigen::MatrixXf res = Eigen::MatrixXf::Zero(msize, msize);
 
    // Take a uniformly distributed point sequence and integrate the triple tensor
    // for each SH band
@@ -161,7 +161,7 @@ inline std::vector<Eigen::MatrixXf> TripleTensorProduct(
    const int order = (truncated) ? sqrt(vsize)-1 : 2*sqrt(vsize)-2;
    const int msize = (truncated) ? vsize         : SH::Terms(order);
 
-   std::vector<Eigen::MatrixXf> res(ylms.size(), Eigen::MatrixXf(msize, msize));
+   std::vector<Eigen::MatrixXf> res(ylms.size(), Eigen::MatrixXf::Zero(msize, msize));
 
    // Take a uniformly distributed point sequence and integrate the triple tensor
    // for each SH band
@@ -172,6 +172,7 @@ inline std::vector<Eigen::MatrixXf> TripleTensorProduct(
 #else
    const std::vector<Vector> directions = SamplingRandom<Vector>(nDirections);
 #endif
+   const float fact = 4.0f * M_PI / float(nDirections);
    for(auto& w : directions) {
       // Construct the matrix
       const Eigen::VectorXf clm = SH::FastBasis(w, order);
@@ -179,12 +180,8 @@ inline std::vector<Eigen::MatrixXf> TripleTensorProduct(
 
       // For each SH vector apply the weight to the matrix and sum it
       for(unsigned int i=0; i<ylms.size(); ++i) {
-         res[i] += clm.segment(0, vsize).dot(ylms[i]) * matrix ;
+         res[i] += fact * clm.segment(0, vsize).dot(ylms[i]) * matrix ;
       }
-   }
-
-   for(unsigned int i=0; i<ylms.size(); ++i) {
-      res[i] *= 4.0f * M_PI / float(nDirections);
    }
    return res;
 }
