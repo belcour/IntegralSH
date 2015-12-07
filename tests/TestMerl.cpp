@@ -1,6 +1,7 @@
 // STL includes
 #include <iostream>
 #include <iomanip>
+#include <fstream>
 #include <vector>
 #include <random>
 #include <utility>
@@ -92,7 +93,7 @@ int TestMerlProjectionSlice(const std::string& filename) {
 }
 
 int TestMerlProjectionMatrix(const std::string& filename,
-                             int order = 10) {
+                             int order = 10, int N = 1000) {
 
    // Constants
    const int size = SH::Terms(order);
@@ -102,70 +103,68 @@ int TestMerlProjectionMatrix(const std::string& filename,
    brdf.read_brdf(filename);
 
    // Values
-   std::mt19937 gen(0);
-   std::uniform_real_distribution<float> dist(0.0,1.0);
    std::vector<Eigen::MatrixXf> cijs(3, Eigen::MatrixXf::Zero(size, size));
-
-   for(int i=0; i<M; ++i) {
-      // Sample the output direction
-      Vector wo;
-      wo.z = 2.0*dist(gen) - 1.0;
-      const float z2 = wo.z*wo.z;
-      if(wo.z < 0.0) { continue; }
-      const float phi = 2.0*M_PI*dist(gen);
-      wo.x = sqrt(1.0f-z2) * cos(phi);
-      wo.y = sqrt(1.0f-z2) * sin(phi);
-
-      // Sample the input direction
-      Vector wi;
-      wi.z = 2.0*dist(gen) - 1.0;
-      const float z2 = wi.z*wi.z;
-      if(wi.z < 0.0) { continue; }
-      const float phi = 2.0*M_PI*dist(gen);
-      wi.x = sqrt(1.0f-z2) * cos(phi);
-      wi.y = sqrt(1.0f-z2) * sin(phi);
-
-      // Evaluate the BRDF value
-      const auto rgb = brdf.value<RGB, Vector>(wi, wo);
+   const auto dirs = SamplingFibonacci<Vector>(N);
+   int i = 0;
+   for(const auto& wo : dirs) {
+      // Skip below the horizon configuration
+      if(wo.z < 0.0) continue;
       const auto ylmo = SH::FastBasis(wo, order);
-      const auto ylmi = SH::FastBasis(wi, order);
 
-      // Enforce reciprocity
-      const MatrixXf mat1 = ylmo * ylmi.transpose();
-      const MatrixXf mat2 = ylmi * ylmo.transpose();
-      cijs += 0.5 * rgb[0]*(mat1 + mat2);
-      cijs += 0.5 * rgb[1]*(mat1 + mat2);
-      cijs += 0.5 * rgb[2]*(mat1 + mat2);
+      for(const auto& wi : dirs) {
+         // Skip below the horizon configuration
+         if(wi.z < 0.0) continue;
+
+         // Evaluate the BRDF value
+         const auto rgb = brdf.value<Vector, Vector>(wi, wo);
+         const auto ylmi = SH::FastBasis(wi, order);
+
+         // Enforce reciprocity
+         const Eigen::MatrixXf mat1 = ylmo * ylmi.transpose();
+         const Eigen::MatrixXf mat2 = ylmi * ylmo.transpose();
+         cijs[0] += 0.5 * rgb[0]*(mat1 + mat2);
+         cijs[1] += 0.5 * rgb[1]*(mat1 + mat2);
+         cijs[2] += 0.5 * rgb[2]*(mat1 + mat2);
+      }
+
+      if(++i % 100 == 0) std::cout << "info: " << i << " / " << N << "     \r"; std::cout.flush();
    }
-   cij *= 16.0*M_PI*M_PI / float(M);
+   const float factor = 16.0*M_PI*M_PI / float(N*N);
+   cijs[0] *= factor;
+   cijs[1] *= factor;
+   cijs[2] *= factor;
 
 
    // Print values
-   const float theta_i = 0.0;
+   std::ofstream file("test.txt", std::ios_base::trunc);
+   const float thetai = -0.5f*M_PI * 30.f/90.f;
    const Vector wi(sin(thetai), 0, cos(thetai));
    const auto ylmi = SH::FastBasis(wi, order);
    Vector wo;
-   for(int i=0; i<elev; ++i) {
-      const float theta = 0.5*M_PI * i / float(elev);
+   for(int i=0; i<90; ++i) {
+      const float theta = 0.5*M_PI * i / float(90);
       wo.x = sin(theta);
       wo.y = 0;
       wo.z = cos(theta);
 
       // Ref
-      const auto RGB = brdf.value<RGB, Vector>(wi, wo);
+      const auto RGB = brdf.value<Vector, Vector>(wi, wo);
       const float R = RGB[0];
       const float G = RGB[1];
       const float B = RGB[2];
 
       // SH expansion
       const auto ylmo = SH::FastBasis(wo, order);
-      const float r = ylmi.dot(ylmo * cijs[0]);
-      const float g = ylmi.dot(ylmo * cijs[1]);
-      const float b = ylmi.dot(ylmo * cijs[2]);
+      const Eigen::VectorXf rlm = cijs[0] * ylmo;
+      const Eigen::VectorXf glm = cijs[1] * ylmo;
+      const Eigen::VectorXf blm = cijs[2] * ylmo;
+      const float r = ylmi.dot(rlm);
+      const float g = ylmi.dot(glm);
+      const float b = ylmi.dot(blm);
 
-      std::cout << theta << "\t" << r << "\t" << g << "\t" << b
-                         << "\t" << R << "\t" << G << "\t" << B
-                         << std::endl;
+      file << theta << "\t" << r << "\t" << g << "\t" << b
+                    << "\t" << R << "\t" << G << "\t" << B
+                    << std::endl;
    }
 
    int nb_fails = 0;
@@ -177,7 +176,7 @@ int main(int argc, char** argv) {
    int nb_fails = 0;
 
    // Load an example
-   nb_fails += TestMerlProjectionSlice("gold-paint.binary");
+   //nb_fails += TestMerlProjectionSlice("gold-paint.binary");
    nb_fails += TestMerlProjectionMatrix("gold-paint.binary");
 
    if(nb_fails > 0) {
