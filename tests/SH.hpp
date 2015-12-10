@@ -30,9 +30,9 @@ inline int SHIndex(int l, int m) {
  */
 template<class Vector>
 Eigen::VectorXf SHEvalFast(const Vector& w, int order) {
-   const float fX = w.x;
-   const float fY = w.y;
-   const float fZ = w.z;
+   const float fX = w[0];
+   const float fY = w[1];
+   const float fZ = w[2];
 
    const int nb_vals = SHTerms(order);
    auto pOut = Eigen::VectorXf(nb_vals);

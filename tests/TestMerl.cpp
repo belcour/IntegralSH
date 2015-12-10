@@ -10,6 +10,7 @@
 #include "Tests.hpp"
 #include "Merl.hpp"
 #include "SH.hpp"
+#include "Utils.hpp"
 #include "SphericalHarmonics.hpp"
 #include "DirectionsSampling.hpp"
 #include "SphericalIntegration.hpp"
@@ -93,7 +94,7 @@ int TestMerlProjectionSlice(const std::string& filename) {
 }
 
 int TestMerlProjectionMatrix(const std::string& filename,
-                             int order = 10, int N = 1000) {
+                             int order = 10, int N = 100) {
 
    // Constants
    const int size = SH::Terms(order);
@@ -134,6 +135,7 @@ int TestMerlProjectionMatrix(const std::string& filename,
    cijs[1] *= factor;
    cijs[2] *= factor;
 
+   SaveMatrices("gold-paint.mats", cijs);
 
    // Print values
    std::ofstream file("test.txt", std::ios_base::trunc);
