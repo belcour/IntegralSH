@@ -18,6 +18,7 @@
 
 // Include STL
 #include <vector>
+#include <memory>
 
 template <class T>
 using VectorX = Eigen::Matrix<T, Eigen::Dynamic, 1>;
@@ -193,6 +194,7 @@ void ComputeBandRotation(int l, std::vector<Eigen::MatrixXf>* rotations) {
 
 class Rotation {
  public:
+/*
   // Create a new Rotation that can applies @rotation to sets of coefficients
   // for the given @order. @order must be at least 0.
   static std::unique_ptr<Rotation> Create(int order,
@@ -202,7 +204,7 @@ class Rotation {
   // can be used to efficiently calculate the matrices for the same 3x3
   // transform when a new order is necessary.
   static std::unique_ptr<Rotation> Create(int order, const Rotation& rotation);
-
+*/
   // Transform the SH basis coefficients in @coeff by this rotation and store
   // them into @result. These may be the same vector. The @result vector will
   // be resized if necessary, but @coeffs must have its size equal to
@@ -214,8 +216,8 @@ class Rotation {
   //
   // There are explicit instantiations for double, float, and Array3f.
   template <typename T>
-  void Apply(const std::vector<T>& coeffs, std::vector<T>* result) const;
-
+  void Apply(const std::vector<T>& coeffs,  std::vector<T>* result) const;
+  void Apply(const Eigen::MatrixXf& coeffs, Eigen::MatrixXf& result) const;
   void Apply(const Eigen::VectorXf& coeffs, Eigen::VectorXf& result) const;
 
   // The order (0-based) that the rotation was constructed with. It can only
@@ -231,9 +233,9 @@ class Rotation {
   // the order this rotation was initially constructed with.
   const Eigen::MatrixXf& band_rotation(int l) const;
 
- private:
-  explicit Rotation(int order, const Eigen::Quaternionf& rotation);
+  Rotation(int order, const Eigen::Quaternionf& rotation);
 
+ private:
   const int order_;
   const Eigen::Quaternionf rotation_;
 
@@ -244,13 +246,45 @@ class Rotation {
 Rotation::Rotation(int order, const Eigen::Quaternionf& rotation)
     : order_(order), rotation_(rotation) {
   band_rotations_.reserve(GetCoefficientCount(order));
+
+  // Order 0 (first band) is simply the 1x1 identity since the SH basis
+  // function is a simple sphere.
+  Eigen::MatrixXf r(1, 1);
+  r(0, 0) = 1.0;
+  band_rotations_.push_back(r);
+
+  r.resize(3, 3);
+  // The second band's transformation is simply a permutation of the
+  // rotation matrix's elements, provided in Appendix 1 of [1], updated to
+  // include the Condon-Shortely phase. The recursive method in
+  // ComputeBandRotation preserves the proper phases as high bands are computed.
+  Eigen::Matrix3f rotation_mat = rotation.toRotationMatrix();
+  r(0, 0) = rotation_mat(1, 1);
+  r(0, 1) = -rotation_mat(1, 2);
+  r(0, 2) = rotation_mat(1, 0);
+  r(1, 0) = -rotation_mat(2, 1);
+  r(1, 1) = rotation_mat(2, 2);
+  r(1, 2) = -rotation_mat(2, 0);
+  r(2, 0) = rotation_mat(0, 1);
+  r(2, 1) = -rotation_mat(0, 2);
+  r(2, 2) = rotation_mat(0, 0);
+  band_rotations_.push_back(r);
+
+  // Recursively build the remaining band rotations, using the equations
+  // provided in [4, 4b].
+  for (int l = 2; l <= order; l++) {
+    ComputeBandRotation(l, &band_rotations_);
+  }
 }
 
+/*
 std::unique_ptr<Rotation> Rotation::Create(
     int order, const Eigen::Quaternionf& rotation) {
+#ifndef NDEBUG
   CHECK(order >= 0, "Order must be at least 0.");
   CHECK(NearByMargin(rotation.squaredNorm(), 1.0),
         "Rotation must be normalized.");
+#endif
 
   std::unique_ptr<Rotation> sh_rot(new Rotation(order, rotation));
 
@@ -265,7 +299,7 @@ std::unique_ptr<Rotation> Rotation::Create(
   // rotation matrix's elements, provided in Appendix 1 of [1], updated to
   // include the Condon-Shortely phase. The recursive method in
   // ComputeBandRotation preserves the proper phases as high bands are computed.
-  Eigen::Matrix3d rotation_mat = rotation.toRotationMatrix();
+  Eigen::Matrix3f rotation_mat = rotation.toRotationMatrix();
   r(0, 0) = rotation_mat(1, 1);
   r(0, 1) = -rotation_mat(1, 2);
   r(0, 2) = rotation_mat(1, 0);
@@ -288,7 +322,9 @@ std::unique_ptr<Rotation> Rotation::Create(
 
 std::unique_ptr<Rotation> Rotation::Create(int order,
                                            const Rotation& rotation) {
+#ifndef NDEBUG
   CHECK(order >= 0, "Order must be at least 0.");
+#endif
 
   std::unique_ptr<Rotation> sh_rot(new Rotation(order, rotation.rotation_));
 
@@ -306,6 +342,7 @@ std::unique_ptr<Rotation> Rotation::Create(int order,
 
   return sh_rot;
 }
+*/
 
 int Rotation::order() const { return order_; }
 
@@ -318,8 +355,10 @@ const Eigen::MatrixXf& Rotation::band_rotation(int l) const {
 template <typename T>
 void Rotation::Apply(const std::vector<T>& coeff,
                      std::vector<T>* result) const {
+#ifndef NDEBUG
   CHECK(coeff.size() == GetCoefficientCount(order_),
         "Incorrect number of coefficients provided.");
+#endif
 
   // Resize to the required number of coefficients.
   // If result is already the same size as coeff, there's no need to zero out
@@ -351,11 +390,21 @@ void Rotation::Apply(const std::vector<T>& coeff,
   }
 }
 
-  void Rotation::Apply(const Eigen::VectorXf& coeffs,
-                       Eigen::VectorXf& result) const {
-    for(int l=0; l<=order_; ++l) {
+void Rotation::Apply(const Eigen::MatrixXf& coeffs,
+                     Eigen::MatrixXf& result) const {
+   const int rows = coeffs.cols();
+   for(int l=0; l<=order_; ++l) {
+      const int i = l*l;
+      const int n = 2*l+1;
+      result.block(i, 0, n, rows) = band_rotations_[l] * coeffs.block(i, 0, n, rows);
+   }
+}
+
+void Rotation::Apply(const Eigen::VectorXf& coeffs,
+                     Eigen::VectorXf& result) const {
+   for(int l=0; l<=order_; ++l) {
       const int i = l*l;
       const int n = 2*l+1;
       result.segment(i, n) = band_rotations_[l] * coeffs.segment(i, n);
-    }
-  }
+   }
+}
