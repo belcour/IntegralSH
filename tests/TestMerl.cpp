@@ -94,7 +94,7 @@ int TestMerlProjectionSlice(const std::string& filename) {
 }
 
 int TestMerlProjectionMatrix(const std::string& filename,
-                             int order = 10, int N = 100) {
+                             int order = 10, int N = 10000) {
 
    // Constants
    const int size = SH::Terms(order);
@@ -107,6 +107,8 @@ int TestMerlProjectionMatrix(const std::string& filename,
    std::vector<Eigen::MatrixXf> cijs(3, Eigen::MatrixXf::Zero(size, size));
    const auto dirs = SamplingFibonacci<Vector>(N);
    int i = 0;
+   #pragma omp declare reduction (merge : Eigen::MatrixXf : omp_out += omp_in)
+   #pragma omp parallel for reduction(merge: cijs[0], cijs[1], ciijs[2])
    for(const auto& wo : dirs) {
       // Skip below the horizon configuration
       if(wo.z < 0.0) continue;
@@ -120,12 +122,20 @@ int TestMerlProjectionMatrix(const std::string& filename,
          const auto rgb = brdf.value<Vector, Vector>(wi, wo);
          const auto ylmi = SH::FastBasis(wi, order);
 
+#ifdef CHECK
          // Enforce reciprocity
          const Eigen::MatrixXf mat1 = ylmo * ylmi.transpose();
          const Eigen::MatrixXf mat2 = ylmi * ylmo.transpose();
          cijs[0] += 0.5 * rgb[0]*(mat1 + mat2);
          cijs[1] += 0.5 * rgb[1]*(mat1 + mat2);
          cijs[2] += 0.5 * rgb[2]*(mat1 + mat2);
+#else
+         // Enforce reciprocity
+         const Eigen::MatrixXf mat = ylmo * ylmi.transpose();
+         cijs[0] += rgb[0]*mat;
+         cijs[1] += rgb[1]*mat;
+         cijs[2] += rgb[2]*mat;
+#endif
       }
 
       if(++i % 100 == 0) std::cout << "info: " << i << " / " << N << "     \r"; std::cout.flush();
