@@ -3,12 +3,12 @@ project (AxialMoments)
 
 # Add platform dependent flags
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
-include (OptimizeForArchitecture)
+#include (OptimizeForArchitecture)
 
 # For debug build
 set(CMAKE_BUILD_TYPE DEBUG)
 
-include_directories ("include" "externals/Eigen" "externals/glm")
+include_directories ("include" "externals/eigen" "externals/glm")
 
 # Add main test suite
 add_executable (TestUtils    tests/TestUtils.cpp     include/Utils.hpp)
