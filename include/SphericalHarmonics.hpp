@@ -185,3 +185,35 @@ inline std::vector<Eigen::MatrixXf> TripleTensorProduct(
    }
    return res;
 }
+
+template<class SH, class Vector>
+Eigen::MatrixXf TripleTensorProductCos(int  order,
+                                       int  nDirections=100000) {
+
+   // Compute the max order
+   const int msize = SH::Terms(order);
+
+   Eigen::MatrixXf res = Eigen::MatrixXf::Zero(msize, msize);
+
+   // Take a uniformly distributed point sequence and integrate the triple tensor
+   // for each SH band
+#if   defined(USE_FIBONACCI_SEQ)
+   const std::vector<Vector> directions = SamplingFibonacci<Vector>(nDirections);
+#elif defined(USE_BLUENOISE_SEQ)
+   const std::vector<Vector> directions = SamplingBlueNoise<Vector>(nDirections);
+#else
+   const std::vector<Vector> directions = SamplingRandom<Vector>(nDirections);
+#endif
+   const float fact = 4.0f * M_PI / float(nDirections);
+   for(auto& w : directions) {
+      // Construct the matrix
+      const Eigen::VectorXf clm = SH::FastBasis(w, order);
+      const auto matrix = clm * clm.transpose();
+
+      // For each SH vector apply the weight to the matrix and sum it
+      if(w[2] > 0.0) {
+         res += fact * w[2] * matrix;
+      }
+   }
+   return res;
+}
