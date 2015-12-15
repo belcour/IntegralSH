@@ -93,8 +93,57 @@ int TestMerlProjectionSlice(const std::string& filename) {
    return 0;
 }
 
+#include <thread>
+
+struct MerlProjectionThread : public std::thread {
+
+   int order;
+   std::vector<Eigen::MatrixXf> cijs;
+
+   MerlProjectionThread(const MerlBRDF* brdf,
+                        const std::vector<Vector>* ws,
+                        int order, int skip, int nthread) :
+      std::thread(&MerlProjectionThread::run, this, brdf, ws, skip, nthread),
+      order(order),
+      cijs(3, Eigen::MatrixXf::Zero(SH::Terms(order), SH::Terms(order)))
+   {}
+
+   void run(const MerlBRDF* brdf,
+            const std::vector<Vector>* dirs,
+            int skip, int nthread) {
+
+      for(unsigned int i=skip; i<dirs->size(); i+=nthread) {
+         const Vector& wo = (*dirs)[i];
+
+         if(skip == 0) {
+            std::cout << "Progress: " << i << " / " << dirs->size() << "     \r";
+            std::cout.flush();
+         }
+
+         // Skip below the horizon configuration
+         if(wo.z < 0.0) continue;
+         const auto ylmo = SH::FastBasis(wo, order);
+
+         for(unsigned int j=0; j<dirs->size(); ++j) {
+            const Vector& wi = (*dirs)[j];
+            // Skip below the horizon configuration
+            if(wi.z < 0.0) continue;
+
+            // Evaluate the BRDF value
+            const auto rgb = brdf->value<Vector, Vector>(wi, wo);
+            const auto ylmi = SH::FastBasis(wi, order);
+
+            const Eigen::MatrixXf mat = ylmo * ylmi.transpose();
+            cijs[0] += rgb[0]*mat;
+            cijs[1] += rgb[1]*mat;
+            cijs[2] += rgb[2]*mat;
+         }
+      }
+   }
+};
+
 int TestMerlProjectionMatrix(const std::string& filename,
-                             int order = 10, int N = 10000) {
+                             int order = 15, int N = 1000) {
 
    // Constants
    const int size = SH::Terms(order);
@@ -108,10 +157,8 @@ int TestMerlProjectionMatrix(const std::string& filename,
 
    // Values
    std::vector<Eigen::MatrixXf> cijs(3, Eigen::MatrixXf::Zero(size, size));
-   Eigen::MatrixXf& cij0 = cijs[0];
-   Eigen::MatrixXf& cij1 = cijs[1];
-   Eigen::MatrixXf& cij2 = cijs[2];
    const auto dirs = SamplingFibonacci<Vector>(N);
+   /*
    for(unsigned int i=0; i<dirs.size(); ++i) {
       const auto& wo = dirs[i];
 
@@ -133,10 +180,25 @@ int TestMerlProjectionMatrix(const std::string& filename,
          cij2 += rgb[2]*mat;
       }
    }
+   */
+   const int nbthreads = std::thread::hardware_concurrency();
+   std::vector<MerlProjectionThread*> threads;
+   for(int k=0; k<nbthreads; ++k) {
+      MerlProjectionThread* th = new MerlProjectionThread(&brdf, &dirs, order, k, nbthreads);
+      threads.push_back(th);
+   }
+
+   for(MerlProjectionThread* th : threads) {
+      th->join();
+      cijs[0] += th->cijs[0];
+      cijs[1] += th->cijs[1];
+      cijs[2] += th->cijs[2];
+      delete th;
+   }
    const float factor = 16.0*M_PI*M_PI / float(N*N);
-   cij0 *= factor;
-   cij1 *= factor;
-   cij2 *= factor;
+   cijs[0] *= factor;
+   cijs[1] *= factor;
+   cijs[2] *= factor;
 
    SaveMatrices("gold-paint.mats", cijs);
 

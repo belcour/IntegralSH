@@ -12,7 +12,6 @@ include_directories ("include" "externals/eigen" "externals/glm")
 
 # Add dependencies
 find_package(Threads REQUIRED)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
 
 # Add main test suite
 add_executable (TestUtils    tests/TestUtils.cpp     include/Utils.hpp)
@@ -46,5 +45,6 @@ add_test(TestRotation TestRotation)
 # Add SH examples
 add_executable (TestMerl  tests/TestMerl.cpp)
 target_compile_features(TestMerl PRIVATE cxx_range_for)
+target_link_libraries(TestMerl ${CMAKE_THREAD_LIBS_INIT})
 add_executable (TestProd  tests/TestProduct.cpp)
 target_compile_features(TestProd PRIVATE cxx_range_for)
