@@ -61,7 +61,7 @@ struct Vector : public glm::vec3 {
    Vector(const glm::vec3& w) : glm::vec3(w) {}
 
    static inline float Dot(const glm::vec3& a, const glm::vec3& b) {
-      return glm::dot(a, b);
+      return glm::dot<float>(a, b);
    }
 
    static inline glm::vec3 Cross(const glm::vec3& a, const glm::vec3& b) {
@@ -152,8 +152,8 @@ bool HitTriangle(const Triangle& triangle, const Vector& w) {
    auto e2 = p3 - p1;
 
    // calculating determinant
-   auto p   = glm::cross(w, e2);
-   auto det = glm::dot(e1, p);
+   auto p   = Vector::Cross(w, e2);
+   auto det = Vector::Dot(e1, p);
 
    //if determinant is near zero, ray lies in plane of triangle otherwise not
    if (det > -Epsilon && det < Epsilon) { return false; }
@@ -163,7 +163,7 @@ bool HitTriangle(const Triangle& triangle, const Vector& w) {
    auto t = - p1;
 
    //Calculate u parameter
-   auto u = glm::dot(t, p) * invDet;
+   auto u = Vector::Dot(t, p) * invDet;
 
    //Check for ray hit
    if (u < 0 || u > 1) { return false; }
@@ -172,12 +172,12 @@ bool HitTriangle(const Triangle& triangle, const Vector& w) {
    auto q = glm::cross(t, e1);
 
    //Calculate v parameter
-   auto v = glm::dot(w, q) * invDet;
+   auto v = Vector::Dot(w, q) * invDet;
 
    //Check for ray hit
    if (v < 0 || u + v > 1) { return false; }
 
-   if ((glm::dot(e2, q) * invDet) > Epsilon) {
+   if ((Vector::Dot(e2, q) * invDet) > Epsilon) {
        //ray does intersect
        return true;
    }

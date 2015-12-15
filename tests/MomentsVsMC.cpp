@@ -28,7 +28,7 @@ std::pair<float,float> MonteCarloMoments(const Triangle& triangle,
 #endif
 
       if(HitTriangle(triangle, d)) {
-         const auto val = pow(glm::dot(d, w), n) / pdf;
+         const auto val = pow(Vector::Dot(d, w), n) / pdf;
          mean += val;
          var  += val*val;
       }

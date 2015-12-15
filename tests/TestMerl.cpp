@@ -94,14 +94,17 @@ int TestMerlProjectionSlice(const std::string& filename) {
 }
 
 int TestMerlProjectionMatrix(const std::string& filename,
-                             int order = 10, int N = 100) {
+                             int order = 15, int N = 1000) {
 
    // Constants
    const int size = SH::Terms(order);
 
    // Load the BRDF
    MerlBRDF brdf;
-   brdf.read_brdf(filename);
+   if(! brdf.read_brdf(filename)) {
+      std::cerr << "Failed: unable to load the MERL brdf" << std::endl;
+      return 1;
+   }
 
    // Values
    std::vector<Eigen::MatrixXf> cijs(3, Eigen::MatrixXf::Zero(size, size));
