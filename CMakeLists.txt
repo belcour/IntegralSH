@@ -12,6 +12,7 @@ include_directories ("include" "externals/eigen" "externals/glm")
 
 # Add dependencies
 find_package(Threads REQUIRED)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
 
 # Add main test suite
 add_executable (TestUtils    tests/TestUtils.cpp     include/Utils.hpp)

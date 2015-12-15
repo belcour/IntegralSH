@@ -108,9 +108,15 @@ int TestMerlProjectionMatrix(const std::string& filename,
 
    // Values
    std::vector<Eigen::MatrixXf> cijs(3, Eigen::MatrixXf::Zero(size, size));
+   Eigen::MatrixXf& cij0 = cijs[0];
+   Eigen::MatrixXf& cij1 = cijs[1];
+   Eigen::MatrixXf& cij2 = cijs[2];
    const auto dirs = SamplingFibonacci<Vector>(N);
-   int i = 0;
-   for(const auto& wo : dirs) {
+   #pragma omp declare reduction(merge: Eigen::MatrixXf: omp_out += omp_in)
+   #pragma omp parallel for reduction(merge: cij0, cij1, cij2)
+   for(unsigned int i=0; i<dirs.size(); ++i) {
+      const auto& wo = dirs[i];
+
       // Skip below the horizon configuration
       if(wo.z < 0.0) continue;
       const auto ylmo = SH::FastBasis(wo, order);
@@ -126,17 +132,18 @@ int TestMerlProjectionMatrix(const std::string& filename,
          // Enforce reciprocity
          const Eigen::MatrixXf mat1 = ylmo * ylmi.transpose();
          const Eigen::MatrixXf mat2 = ylmi * ylmo.transpose();
-         cijs[0] += 0.5 * rgb[0]*(mat1 + mat2);
-         cijs[1] += 0.5 * rgb[1]*(mat1 + mat2);
-         cijs[2] += 0.5 * rgb[2]*(mat1 + mat2);
+         cij0 += 0.5 * rgb[0]*(mat1 + mat2);
+         cij1 += 0.5 * rgb[1]*(mat1 + mat2);
+         cij2 += 0.5 * rgb[2]*(mat1 + mat2);
       }
 
-      if(++i % 100 == 0) std::cout << "info: " << i << " / " << N << "     \r"; std::cout.flush();
+      #pragma omp critical
+      if(omp_get_thread_num() == 0) std::cout << "info: " << i << " / " << N/omp_get_num_threads() << "     \r"; std::cout.flush();
    }
    const float factor = 16.0*M_PI*M_PI / float(N*N);
-   cijs[0] *= factor;
-   cijs[1] *= factor;
-   cijs[2] *= factor;
+   cij0 *= factor;
+   cij1 *= factor;
+   cij2 *= factor;
 
    SaveMatrices("gold-paint.mats", cijs);
 
