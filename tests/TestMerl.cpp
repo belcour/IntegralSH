@@ -101,15 +101,20 @@ int TestMerlProjectionMatrix(const std::string& filename,
 
    // Load the BRDF
    MerlBRDF brdf;
-   brdf.read_brdf(filename);
+   if(! brdf.read_brdf(filename)) {
+      std::cerr << "Failed: unable to load the MERL brdf" << std::endl;
+      return 1;
+   }
 
    // Values
    std::vector<Eigen::MatrixXf> cijs(3, Eigen::MatrixXf::Zero(size, size));
+   Eigen::MatrixXf& cij0 = cijs[0];
+   Eigen::MatrixXf& cij1 = cijs[1];
+   Eigen::MatrixXf& cij2 = cijs[2];
    const auto dirs = SamplingFibonacci<Vector>(N);
-   int i = 0;
-   #pragma omp declare reduction (merge : Eigen::MatrixXf : omp_out += omp_in)
-   #pragma omp parallel for reduction(merge: cijs[0], cijs[1], ciijs[2])
-   for(const auto& wo : dirs) {
+   for(unsigned int i=0; i<dirs.size(); ++i) {
+      const auto& wo = dirs[i];
+
       // Skip below the horizon configuration
       if(wo.z < 0.0) continue;
       const auto ylmo = SH::FastBasis(wo, order);
@@ -122,28 +127,16 @@ int TestMerlProjectionMatrix(const std::string& filename,
          const auto rgb = brdf.value<Vector, Vector>(wi, wo);
          const auto ylmi = SH::FastBasis(wi, order);
 
-#ifdef CHECK
-         // Enforce reciprocity
-         const Eigen::MatrixXf mat1 = ylmo * ylmi.transpose();
-         const Eigen::MatrixXf mat2 = ylmi * ylmo.transpose();
-         cijs[0] += 0.5 * rgb[0]*(mat1 + mat2);
-         cijs[1] += 0.5 * rgb[1]*(mat1 + mat2);
-         cijs[2] += 0.5 * rgb[2]*(mat1 + mat2);
-#else
-         // Enforce reciprocity
          const Eigen::MatrixXf mat = ylmo * ylmi.transpose();
-         cijs[0] += rgb[0]*mat;
-         cijs[1] += rgb[1]*mat;
-         cijs[2] += rgb[2]*mat;
-#endif
+         cij0 += rgb[0]*mat;
+         cij1 += rgb[1]*mat;
+         cij2 += rgb[2]*mat;
       }
-
-      if(++i % 100 == 0) std::cout << "info: " << i << " / " << N << "     \r"; std::cout.flush();
    }
    const float factor = 16.0*M_PI*M_PI / float(N*N);
-   cijs[0] *= factor;
-   cijs[1] *= factor;
-   cijs[2] *= factor;
+   cij0 *= factor;
+   cij1 *= factor;
+   cij2 *= factor;
 
    SaveMatrices("gold-paint.mats", cijs);
 

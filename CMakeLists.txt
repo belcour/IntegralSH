@@ -1,14 +1,18 @@
 cmake_minimum_required (VERSION 3.2)
-project (AxialMoments)
+project (AxialMoments CXX)
 
 # Add platform dependent flags
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
-include (OptimizeForArchitecture)
+#include (OptimizeForArchitecture)
 
 # For debug build
 set(CMAKE_BUILD_TYPE DEBUG)
 
-include_directories ("include" "externals/Eigen" "externals/glm")
+include_directories ("include" "externals/eigen" "externals/glm")
+
+# Add dependencies
+find_package(Threads REQUIRED)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
 
 # Add main test suite
 add_executable (TestUtils    tests/TestUtils.cpp     include/Utils.hpp)
@@ -19,6 +23,7 @@ add_executable (TestMnEqual  tests/MomentsEquals.cpp include/AxialMoments.hpp)
 add_executable (TestSpheInt  tests/SphericalInt.cpp  include/AxialMoments.hpp include/SphericalIntegration.hpp tests/SH.hpp)
 add_executable (TestSpheHar  tests/SphericalH.cpp    include/AxialMoments.hpp include/SphericalIntegration.hpp tests/SH.hpp)
 add_executable (TestRotation tests/TestRotations.cpp)
+target_link_libraries(TestRotation ${CMAKE_THREAD_LIBS_INIT})
 target_compile_features(TestUtils    PRIVATE cxx_range_for)
 target_compile_features(TestMnVsArvo PRIVATE cxx_range_for)
 target_compile_features(TestMnVsMC   PRIVATE cxx_range_for)
