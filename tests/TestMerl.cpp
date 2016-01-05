@@ -143,7 +143,7 @@ struct MerlProjectionThread : public std::thread {
 };
 
 int TestMerlProjectionMatrix(const std::string& filename,
-                             int order = 15, int N = 1000) {
+                             int order = 18, int N = 5000) {
 
    // Constants
    const int size = SH::Terms(order);
@@ -154,6 +154,11 @@ int TestMerlProjectionMatrix(const std::string& filename,
       std::cerr << "Failed: unable to load the MERL brdf" << std::endl;
       return 1;
    }
+
+   const auto k = filename.rfind('.');
+   std::string ofilename = filename;
+   ofilename.replace(k, std::string::npos, ".mats");
+   std::cout << "Will output to \"" << ofilename << "\"" << std::endl;
 
    // Values
    std::vector<Eigen::MatrixXf> cijs(3, Eigen::MatrixXf::Zero(size, size));
@@ -200,7 +205,7 @@ int TestMerlProjectionMatrix(const std::string& filename,
    cijs[1] *= factor;
    cijs[2] *= factor;
 
-   SaveMatrices("gold-paint.mats", cijs);
+   SaveMatrices(ofilename, cijs);
 
    // Print values
    std::ofstream file("test.txt", std::ios_base::trunc);
@@ -244,7 +249,7 @@ int main(int argc, char** argv) {
 
    // Load an example
    //nb_fails += TestMerlProjectionSlice("gold-paint.binary");
-   nb_fails += TestMerlProjectionMatrix("gold-paint.binary");
+   nb_fails += TestMerlProjectionMatrix(argv[1]);
 
    if(nb_fails > 0) {
       return EXIT_FAILURE;

@@ -57,25 +57,25 @@ Eigen::VectorXf DiffuseSHDecomposition(int order) {
 
    const float pisqrt = sqrt(M_PI);
    Eigen::VectorXf zhCoeffs(19);
-	zhCoeffs[0]  = pisqrt/2.0;
-	zhCoeffs[1]  = sqrt(M_PI/3.0);
-	zhCoeffs[2]  = sqrt(5.0*M_PI)/8.0;
-	zhCoeffs[3]  = 0.0;
-	zhCoeffs[4]  = -pisqrt/16.0;
-	zhCoeffs[5]  = 0.0;
-	zhCoeffs[6]  = sqrt(13.0*M_PI)/128.0;
-	zhCoeffs[7]  = 0.0;
-	zhCoeffs[8]  = -sqrt(17.0*M_PI)/256.0;
-	zhCoeffs[9]  = 0.0;
-	zhCoeffs[10] = 7.0*sqrt(7.0*M_PI/3.0)/1024.0;
-	zhCoeffs[11] = 0.0;
-	zhCoeffs[12] = -15.0*pisqrt/2048;
-	zhCoeffs[13] = 0.0;
-	zhCoeffs[14] = 33.0*sqrt(29.0*M_PI)/32768.0;
-	zhCoeffs[15] = 0.0;
-	zhCoeffs[16] = -143.0*sqrt(11.0*M_PI/3.0)/65536.0;
-	zhCoeffs[17] = 0.0;
-	zhCoeffs[18] = 143.0*sqrt(37.0*M_PI)/262144.0;
+   zhCoeffs[0]  = pisqrt/2.0;
+   zhCoeffs[1]  = sqrt(M_PI/3.0);
+   zhCoeffs[2]  = sqrt(5.0*M_PI)/8.0;
+   zhCoeffs[3]  = 0.0;
+   zhCoeffs[4]  = -pisqrt/16.0;
+   zhCoeffs[5]  = 0.0;
+   zhCoeffs[6]  = sqrt(13.0*M_PI)/128.0;
+   zhCoeffs[7]  = 0.0;
+   zhCoeffs[8]  = -sqrt(17.0*M_PI)/256.0;
+   zhCoeffs[9]  = 0.0;
+   zhCoeffs[10] = 7.0*sqrt(7.0*M_PI/3.0)/1024.0;
+   zhCoeffs[11] = 0.0;
+   zhCoeffs[12] = -15.0*pisqrt/2048;
+   zhCoeffs[13] = 0.0;
+   zhCoeffs[14] = 33.0*sqrt(29.0*M_PI)/32768.0;
+   zhCoeffs[15] = 0.0;
+   zhCoeffs[16] = -143.0*sqrt(11.0*M_PI/3.0)/65536.0;
+   zhCoeffs[17] = 0.0;
+   zhCoeffs[18] = 143.0*sqrt(37.0*M_PI)/262144.0;
 
    const int vsize = (order+1)*(order+1);
    Eigen::VectorXf shCoeffs = Eigen::VectorXf::Zero(vsize);
@@ -243,7 +243,6 @@ std::pair<float,float> MonteCarloSH(const Eigen::VectorXf& alm,
          mean += val;
          var  += val*val;
       }
-
    }
 
    mean /= M;
@@ -258,6 +257,7 @@ std::pair<float,float> MonteCarloSH(const Eigen::VectorXf& alm,
 int CheckSHIntegration(const Eigen::VectorXf& alm,
                        const Eigen::VectorXf& blm,
                        const Triangle& tri,
+                       bool  clampSH = true,
                        float Epsilon = 1.0E-3) {
 
    std::cout << "Testing the analytical integration with:" << std::endl;
@@ -273,22 +273,30 @@ int CheckSHIntegration(const Eigen::VectorXf& alm,
    const int order = sqrt(alm.size())-1;
    int nb_fails = 0;
 
-   // Monte-Carlo solution
-   const auto mcI = MonteCarloSH(alm, blm, tri);
-
    /* Analytical solution */
 
    // Get the Zonal weights matrix and the Zlm -> Ylm conversion matrix
    // and compute the product of the two: `Prod = A x Zw`.
-   const auto basis = SamplingBlueNoise<Vector>(2*order+1);
+   const int  nbVec = (clampSH) ? 2*order+1 : 4*order+1;
+   const auto basis = SamplingBlueNoise<Vector>(nbVec);
    const auto ZW    = ZonalWeights<Vector>(basis);
    const auto Y     = ZonalExpansion<SH, Vector>(basis);
    const auto A     = computeInverse(Y);
-   const auto TPM   = TripleTensorProduct<SH, Vector>(alm, true);
+   const auto TPM   = TripleTensorProduct<SH, Vector>(alm, clampSH);
    const auto prod  = (A*ZW).transpose();
-   const auto zlm   = prod * (TPM*blm);
+
+   Eigen::VectorXf zlm;
+   if(clampSH) {
+      zlm = prod * (TPM*blm);
+   } else {
+      zlm = prod * (TPM.block(0,0,SH::Terms(2*order),SH::Terms(order))*blm);
+   }
    const auto shI   = zlm.dot(AxialMoments<Triangle, Vector>(tri, basis));
 
+   /* Monte-Carlo solution */
+   const auto mcI = MonteCarloSH(alm, blm, tri);
+
+   // Check the difference between the two solutions
    if(!closeTo(shI, mcI)) {
       ++nb_fails;
 
@@ -319,6 +327,14 @@ int main(int argc, char** argv) {
    auto tri = Triangle(Vector::Normalize(A), Vector::Normalize(B), Vector::Normalize(C));
    Eigen::VectorXf clm = DiffuseSHDecomposition(order);
    nb_fails += CheckSHIntegration(clm, clm, tri);
+
+   // Test spherical integration of products with no clamping
+   nb_fails += CheckSHIntegration(clm, clm, tri, false);
+
+   // Test spherical integration of products with no clamping,
+   // using a random SH expansion.
+   Eigen::VectorXf dlm = Eigen::VectorXf::Random(SH::Terms(order));
+   nb_fails += CheckSHIntegration(clm, dlm, tri, false);
 
    if(nb_fails > 0) {
       return EXIT_FAILURE;
