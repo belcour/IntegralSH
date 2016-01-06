@@ -149,7 +149,7 @@ int IntegrateProducts() {
    int nb_fails = 0;
 
    const bool trunc = false;
-   const int order  = 9;
+   const int order  = 1;
    const int morder = trunc ? order : 2*order-1;
    const int nsize = SH::Terms(order);
    const int msize = trunc ? nsize : SH::Terms(morder);
@@ -165,6 +165,7 @@ int IntegrateProducts() {
    // product of (f · cos)(w) using SH.
    std::cout << "# Precomputing the TripleTensorProduct" << std::endl;
    const auto fMats = TripleTensorProduct<SH, Vector>(fYlms, trunc);
+
    for(const auto& fMat : fMats) {
       cosFYlms.push_back(fMat.block(0, 0, msize, nsize) * cosYlm);
    }
@@ -315,11 +316,11 @@ int main(int argc, char** argv) {
 
    int nb_fails = 0;
 
-   /*
+   //*
    // Load an example
-   nb_fails += IntegrateProduct();
+   //nb_fails += IntegrateProduct();
    nb_fails += IntegrateProducts();
-   */
+   //*/
 
    // Test spherical integration of products
    int order  = 5;

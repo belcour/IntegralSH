@@ -8,6 +8,10 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 # For debug build
 set(CMAKE_BUILD_TYPE DEBUG)
 
+if ( CMAKE_COMPILER_IS_GNUCC )
+   add_definitions ("-Wall")
+endif ( CMAKE_COMPILER_IS_GNUCC )
+
 include_directories ("include" "externals/eigen" "externals/glm")
 
 # Add dependencies

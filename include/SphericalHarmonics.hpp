@@ -7,6 +7,9 @@
 // STL includes
 #include <vector>
 #include <random>
+#ifdef USE_THREADS
+#include <thread>
+#endif
 
 // Local include
 #include "DirectionsSampling.hpp"
@@ -156,6 +159,43 @@ inline std::vector<Eigen::MatrixXf> TripleTensorProduct(
                                        bool truncated=true,
                                        int nDirections=100000) {
 
+#ifdef USE_THREADS
+   struct TTPThread : public std::thread {
+
+      std::vector<Eigen::MatrixXf> res;
+
+      TTPThread(const std::vector<Vector>& dirs, unsigned int start, unsigned int end,
+                const std::vector<Eigen::VectorXf>& ylms, int order) :
+         std::thread(&TTPThread::run, this, dirs, start, end, ylms, order) {}
+
+      void run(const std::vector<Vector>& dirs, unsigned int start, unsigned int end,
+               const std::vector<Eigen::VectorXf>& ylms, int order) {
+         const int vsize = ylms[0].size();
+         const float fact = 4.0f * M_PI / float(dirs.size());
+
+         const int msize = SH::Terms(order);
+         Eigen::MatrixXf mat(msize, msize);
+         Eigen::VectorXf clm;
+
+         res = std::vector<Eigen::MatrixXf>(3, Eigen::MatrixXf::Zero(msize, msize));
+
+         for(unsigned int k=start; k<end; ++k) {
+            // Get the vector
+            const Vector& w = dirs[k];
+
+            // Construct the matrix
+            clm = SH::FastBasis(w, order);
+            mat = clm * clm.transpose();
+
+            // For each SH vector apply the weight to the matrix and sum it
+            for(unsigned int i=0; i<ylms.size(); ++i) {
+               res[i] += fact * clm.segment(0, vsize).dot(ylms[i]) * mat;
+            }
+         }
+      }
+   };
+#endif
+
    // Compute the max order
    const int vsize = ylms[0].size();
    const int order = (truncated) ? sqrt(vsize)-1 : 2*sqrt(vsize)-2;
@@ -172,6 +212,25 @@ inline std::vector<Eigen::MatrixXf> TripleTensorProduct(
 #else
    const std::vector<Vector> directions = SamplingRandom<Vector>(nDirections);
 #endif
+
+#ifdef USE_THREADS
+   std::vector<TTPThread*> threads;
+   const unsigned int nthreads = std::thread::hardware_concurrency();
+   for(unsigned int i=0; i<nthreads; ++i) {
+      const unsigned int block = nDirections / nthreads;
+      const unsigned int start = i * block;
+      const unsigned int end   = (i<nthreads-1) ? (i+1)*block : nDirections;
+      threads.push_back(new TTPThread(directions, start, end, ylms, order));
+   }
+
+   for(TTPThread* thread : threads) {
+      thread->join();
+
+      for(unsigned int i=0; i<3; ++i) {
+         res[i] += thread->res[i];
+      }
+   }
+#else
    const float fact = 4.0f * M_PI / float(nDirections);
    for(auto& w : directions) {
       // Construct the matrix
@@ -183,6 +242,7 @@ inline std::vector<Eigen::MatrixXf> TripleTensorProduct(
          res[i] += fact * clm.segment(0, vsize).dot(ylms[i]) * matrix ;
       }
    }
+#endif
    return res;
 }
 
