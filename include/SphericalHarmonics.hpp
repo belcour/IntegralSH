@@ -14,21 +14,22 @@
 // Local include
 #include "DirectionsSampling.hpp"
 
-/* This header provide multiple ways to project spherical function to Spherical Harmonics
- * vectors.
+/* This header provide multiple ways to project spherical function to Spherical
+ * Harmonics vectors.
  *
- *    + 'ProjectToSH' return the SH coefficient vector when the Functor to be projected
- *      is bandlimited to the max order of SH. Warning: do not use with highly varying
- *      functions! This projection will probably behave very badly. In such case, it is
- *      advised to use the 'ProjectToShMC' method.
+ *    + 'ProjectToSH' return the SH coefficient vector when the Functor to be
+ *    projected is bandlimited to the max order of SH. Warning: do not use with
+ *    highly varying functions! This projection will probably behave very
+ *    badly. In such case, it is advised to use the 'ProjectToShMC' method.
  *
- *    + 'ProjectToShMC' return the SH coefficient vector by integrating <f·Ylm> using
- *      Monte Carlo integration. It is possible to choose the type of random or quasi-
- *      random sequence for the integration.
+ *    + 'ProjectToShMC' return the SH coefficient vector by integrating <f·Ylm>
+ *    using Monte Carlo integration. It is possible to choose the type of
+ *    random or quasi- random sequence for the integration.
  *
- *    + 'TripleTensorProduct' return the premultiplied triple tensor product: the
- *      integral of <Ylm x Ylm x Ylm> multiplied by the SH coefficients 'clm' of 'f'.
- *      The integral is computed using Monte Carlo, as 'ProjectToShMC' does.
+ *    + 'TripleTensorProduct' return the premultiplied triple tensor product:
+ *    the integral of <Ylm x Ylm x Ylm> multiplied by the SH coefficients 'clm'
+ *    of 'f'.  The integral is computed using Monte Carlo, as 'ProjectToShMC'
+ *    does.
  *
  * TODO: Template the direction sequence.
  */

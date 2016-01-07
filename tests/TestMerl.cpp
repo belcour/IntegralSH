@@ -163,29 +163,7 @@ int TestMerlProjectionMatrix(const std::string& filename,
    // Values
    std::vector<Eigen::MatrixXf> cijs(3, Eigen::MatrixXf::Zero(size, size));
    const auto dirs = SamplingFibonacci<Vector>(N);
-   /*
-   for(unsigned int i=0; i<dirs.size(); ++i) {
-      const auto& wo = dirs[i];
 
-      // Skip below the horizon configuration
-      if(wo.z < 0.0) continue;
-      const auto ylmo = SH::FastBasis(wo, order);
-
-      for(const auto& wi : dirs) {
-         // Skip below the horizon configuration
-         if(wi.z < 0.0) continue;
-
-         // Evaluate the BRDF value
-         const auto rgb = brdf.value<Vector, Vector>(wi, wo);
-         const auto ylmi = SH::FastBasis(wi, order);
-
-         const Eigen::MatrixXf mat = ylmo * ylmi.transpose();
-         cij0 += rgb[0]*mat;
-         cij1 += rgb[1]*mat;
-         cij2 += rgb[2]*mat;
-      }
-   }
-   */
    const int nbthreads = std::thread::hardware_concurrency();
    std::vector<MerlProjectionThread*> threads;
    for(int k=0; k<nbthreads; ++k) {
