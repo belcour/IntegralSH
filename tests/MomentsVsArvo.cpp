@@ -42,6 +42,43 @@ int TestSolidAngle(const Triangle& tri, float Epsilon = 1.0E-5) {
    return nb_fails;
 }
 
+int TestSolidAngle(const Quad& quad, float Epsilon = 1.0E-5) {
+
+   std::cout << "Quad set using:" << std::endl;
+   std::cout << " + A = : " << quad[0].A << std::endl;
+   std::cout << " + B = : " << quad[1].A << std::endl;
+   std::cout << " + C = : " << quad[2].A << std::endl;
+   std::cout << " + D = : " << quad[3].A << std::endl;
+   std::cout << std::endl;
+
+   // Track the number of failed tests
+   int nb_fails = 0;
+
+   auto analytical = SolidAngle<Quad, Vector>(quad);
+   std::cout << "Analytical solid angle : " << analytical << std::endl;
+
+   float quad_array[9] = {quad[0].A.x, quad[0].A.y, quad[0].A.z,
+                          quad[1].A.x, quad[1].A.y, quad[1].A.z,
+                          quad[2].A.x, quad[2].A.y, quad[2].A.z };
+   float arvo = TriangleSolidAngle(&quad_array[0], &quad_array[3], &quad_array[6]);
+   float sec_array[9] = {quad[2].A.x, quad[2].A.y, quad[2].A.z,
+                         quad[3].A.x, quad[3].A.y, quad[3].A.z,
+                         quad[0].A.x, quad[0].A.y, quad[0].A.z };
+   arvo += TriangleSolidAngle(&sec_array[0], &sec_array[3], &sec_array[6]);
+   std::cout << "Arvo's solid angle : " << arvo << std::endl;
+
+   if(std::abs(analytical - arvo) > Epsilon*std::abs(analytical) ||
+      std::isnan(analytical)) {
+      std::cerr << "Error: solid angle differs from Arvo's!" << std::endl;
+      std::cerr << "       error is = " << std::abs(analytical - arvo) << std::endl;
+      ++nb_fails;
+   }
+
+   std::cout << std::endl;
+
+   return nb_fails;
+}
+
 int TestMoments(const glm::vec3& w, const Triangle& tri,
                 int nMin, int nMax,
                 float Epsilon = 1.0E-5) {
@@ -94,12 +131,11 @@ int main(int argc, char** argv) {
 
 
    // Generate a triangle + lobe direction configuration
-   glm::vec3 A, B, C, w;
+   glm::vec3 A, B, C, D, w;
    Triangle tri;
 
 
    /* Check the computation of the solid angle */
-
    A = glm::vec3( 0.5,-0.5, 1.0);
    B = glm::vec3(-0.5,-0.5, 1.0);
    C = glm::vec3( 0.0, 0.5, 1.0);
@@ -113,9 +149,21 @@ int main(int argc, char** argv) {
    tri = Triangle(glm::normalize(A), glm::normalize(B), glm::normalize(C));
    nb_fails += TestSolidAngle(tri, Epsilon);
 
+   A = glm::vec3( 0.5,  0.0, 1.0);
+   B = glm::vec3( 0.0,  0.5, 1.0);
+   C = glm::vec3(-0.5,  0.0, 1.0);
+   D = glm::vec3( 0.0, -0.5, 1.0);
+   Quad quad = Quad(glm::normalize(A), glm::normalize(B),
+                    glm::normalize(C), glm::normalize(D));
+   nb_fails += TestSolidAngle(quad, Epsilon);
+
    /* Moment computation comparison */
 
    // Change the moments' axis
+   A = glm::vec3(Eps, Eps, 1.0);
+   B = glm::vec3(Eps, 0.5, 1.0);
+   C = glm::vec3(0.5, Eps, 1.0);
+   tri = Triangle(glm::normalize(A), glm::normalize(B), glm::normalize(C));
    w = glm::normalize(glm::vec3(0, 0, 1));
    nb_fails += TestMoments(w, tri, nMin, nMax, Epsilon);
 

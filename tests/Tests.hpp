@@ -54,6 +54,18 @@ struct Triangle : public std::vector<Edge> {
    }
 };
 
+struct Quad: public std::vector<Edge> {
+   Quad() {
+   }
+   Quad(const glm::vec3& A, const glm::vec3& B,
+        const glm::vec3& C, const glm::vec3& D) {
+     this->push_back(Edge(A, B));
+     this->push_back(Edge(B, C));
+     this->push_back(Edge(C, D));
+     this->push_back(Edge(D, A));
+   }
+};
+
 struct Vector : public glm::vec3 {
 
    Vector() : glm::vec3() {}

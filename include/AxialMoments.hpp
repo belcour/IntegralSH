@@ -139,29 +139,15 @@ inline Eigen::VectorXf BoundaryIntegral(const Polygon& P, const Vector& w,
 /* _Solid Angle_
  *
  * Compute the solid angle sustained by a `Polygon P`.
- * TODO: Handle the case where P is more that a Triangle.
  */
 template<class Polygon, class Vector>
 inline float SolidAngle(const Polygon& P) {
    if(P.size() == 3) {
-
+      // Using the method of Oosterom and Strackee [1983]
       const Vector& A = P[0].A;
       const Vector& B = P[1].A;
       const Vector& C = P[2].A;
 
-      // Note: This version of the code is buggy, and I cannot figure out why.
-      // so I prefer to use the alternate method of Oosterom and Strackee [1983]
-#ifdef ARVO_SOLID_ANGLE
-      const Vector ab = Vector::Normalize(Vector::Cross(A, B));
-      const Vector ac = Vector::Normalize(Vector::Cross(A, C));
-      const Vector ba = Vector::Normalize(Vector::Cross(B, A));
-      const Vector bc = Vector::Normalize(Vector::Cross(B, C));
-      const Vector cb = Vector::Normalize(Vector::Cross(C, B));
-      return acos(Vector::Dot(ba, ac)) +
-             acos(Vector::Dot(cb, ab)) +
-             acos(Vector::Dot(ac, bc)) - M_PI;
-
-#else // OOSTEROM_STRACKEE
       const Vector bc = Vector::Cross(B,C);
       const float num = std::abs(Vector::Dot(bc, A));
       const float al = Vector::Length(A);
@@ -178,11 +164,24 @@ inline float SolidAngle(const Polygon& P) {
       }
       return 2.0f * phi;
 
-#endif
-
    } else {
-      assert(false);
-      return 0.0f;
+      // Using the algorithm for computing solid angle of polyhedral cones by
+      // Mazonka found in http://arxiv.org/pdf/1205.1396v2.pdf
+      std::complex<float> z(1, 0);
+      for(int k=0; k<P.size(); ++k) {
+         const Vector& A = P[(k > 0) ? k-1 : P.size()-1].A;
+         const Vector& B = P[k].A;
+         const Vector& C = P[k].B;
+
+         const float ak = Vector::Dot(A, C);
+         const float bk = Vector::Dot(A, B);
+         const float ck = Vector::Dot(B, C);
+         const float dk = Vector::Dot(A, Vector::Cross(B, C));
+         const std::complex<float> zk(bk*ck-ak, dk);
+         z *= zk;
+      }
+      const float arg = std::arg(z);
+      return (arg < 0.0f) ? -arg : 2.0*M_PI - arg;
    }
 }
 
