@@ -27,6 +27,9 @@
 #include <cstdlib>
 #include <cmath>
 
+// Include Eigen
+#include <Eigen/Core>
+
 #define BRDF_SAMPLING_RES_THETA_H       90
 #define BRDF_SAMPLING_RES_THETA_D       90
 #define BRDF_SAMPLING_RES_PHI_D         360

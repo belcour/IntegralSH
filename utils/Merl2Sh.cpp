@@ -5,18 +5,22 @@
 #include <vector>
 #include <random>
 #include <utility>
+#include <thread>
 
 // Local includes
-#include "Tests.hpp"
 #include "Merl.hpp"
-#include "SH.hpp"
-#include "Utils.hpp"
-#include "SphericalHarmonics.hpp"
-#include "DirectionsSampling.hpp"
-#include "SphericalIntegration.hpp"
+#include <tests/Tests.hpp>
+#include <tests/SH.hpp>
+#include <include/Utils.hpp>
+#include <include/SphericalHarmonics.hpp>
+#include <include/DirectionsSampling.hpp>
+#include <include/SphericalIntegration.hpp>
 
 // GLM include
 #include <glm/glm.hpp>
+
+// Include Eigen
+#include <Eigen/Core>
 
 struct SH {
 
@@ -36,64 +40,6 @@ struct SH {
    }
 };
 
-struct MerlSlice {
-
-   const MerlBRDF& brdf;
-   const Vector&   wi;
-
-   // Constructor
-   MerlSlice(const MerlBRDF& brdf, const Vector& wi) : brdf(brdf), wi(wi) {}
-
-   // Functor capabilities
-   Eigen::Vector3f operator()(const Vector& wo) const {
-      return brdf.value<Eigen::Vector3f, Vector>(wi, wo);
-   }
-};
-
-int TestMerlProjectionSlice(const std::string& filename) {
-
-   int order = 18;
-   int elev  = 90;
-
-
-   // Load the BRDF
-   MerlBRDF brdf;
-   brdf.read_brdf(filename);
-
-   // Print the values
-   std::vector<Vector> idirs;
-   for(int i=0; i<elev; ++i) {
-      const float theta = 0.5*M_PI * i / float(elev);
-      Vector wo(sin(theta), 0, cos(theta));
-      idirs.push_back(wo);
-   }
-
-   // Get the SH expansion of rho as a list of SH vectors each of a particular
-   // incidence. This is the method of Sillion et al.
-   std::vector<Eigen::MatrixXf> matrices;
-   matrices.reserve(elev);
-   matrices = brdf.projectToSH<Eigen::Vector3f, Vector, SH>(elev, order);
-
-   // Print values
-   int col = 0;
-   const float thetai = 0.5*M_PI * col/float(elev);
-   Vector wi(sin(thetai), 0, cos(thetai));
-   Vector wo;
-   for(int i=0; i<elev; ++i) {
-      const float theta = 0.5*M_PI * i / float(elev);
-      wo.x = sin(theta);
-      wo.y = 0;
-      wo.z = cos(theta);
-
-      const auto ylm = SH::FastBasis(wo, order);
-      std::cout << theta << " " << matrices[col].col(0).dot(ylm)
-                         << " " << brdf.value<Eigen::Vector3f, Vector>(wi, wo).transpose() << std::endl;
-   }
-
-   return 0;
-}
-
-#include <thread>
 
 struct MerlProjectionThread : public std::thread {
 
@@ -142,8 +88,8 @@ struct MerlProjectionThread : public std::thread {
    }
 };
 
-int TestMerlProjectionMatrix(const std::string& filename,
-                             int order = 18, int N = 5000) {
+int MerlProjectionMatrix(const std::string& filename,
+                         int order = 18, int N = 5000) {
 
    // Constants
    const int size = SH::Terms(order);
@@ -221,13 +167,38 @@ int TestMerlProjectionMatrix(const std::string& filename,
    return nb_fails;
 }
 
+bool parseArguments(int argc, char** argv, std::string& filename, int& order) {
+
+   // Loop over all the different elements of the command line and search for
+   // some patterns
+   for(int k=0; k<argc; ++k) {
+      if(argv[k] == std::string("-h") || argv[k] == std::string("--help")) {
+         std::cerr << "Usage: merl2sh [options] filename.binary" << std::endl;
+         return false;
+      } else if((argv[k] == std::string( "-o") || argv[k] == std::string("--order")) && k+1<argc)
+         order = std::atoi(argv[k+1]);
+   }
+
+   // The filename to convert is the last argument of the command line.
+   if(argc > 1) {
+      filename = argv[argc-1];
+      return true;
+   } else {
+      return false;
+   }
+}
+
 int main(int argc, char** argv) {
 
    int nb_fails = 0;
+   std::string filename;
+   int order;
+   if(! parseArguments(argc, argv, filename, order)) {
+      return EXIT_SUCCESS;
+   }
 
    // Load an example
-   //nb_fails += TestMerlProjectionSlice("gold-paint.binary");
-   nb_fails += TestMerlProjectionMatrix(argv[1]);
+   nb_fails += MerlProjectionMatrix(argv[1], order);
 
    if(nb_fails > 0) {
       return EXIT_FAILURE;
