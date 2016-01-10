@@ -44,6 +44,11 @@ struct Edge {
    glm::vec3 A, B;
 };
 
+/* 'The Triangle' structure represent a spherical triangle of three coordinates
+ * A, B and C by storing its Edges in a vcetor.
+ *
+ * TODO: Extend to the polygon structure
+ */
 struct Triangle : public std::vector<Edge> {
    Triangle() {
    }
@@ -97,6 +102,9 @@ std::ostream& operator<< (std::ostream& out, const glm::vec3& a) {
 std::mt19937 _test_gen(0);
 std::uniform_real_distribution<float> _test_dist(0.0,1.0);
 
+/* 'Sample' generate a random direction on the unit sphere with uniform
+ * distribution using _test_gen and _test_dist random number generators..
+ */
 glm::vec3 Sample() {
 
    glm::vec3 out;
