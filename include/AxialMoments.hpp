@@ -168,7 +168,7 @@ inline float SolidAngle(const Polygon& P) {
       // Using the algorithm for computing solid angle of polyhedral cones by
       // Mazonka found in http://arxiv.org/pdf/1205.1396v2.pdf
       std::complex<float> z(1, 0);
-      for(int k=0; k<P.size(); ++k) {
+      for(unsigned int k=0; k<P.size(); ++k) {
          const Vector& A = P[(k > 0) ? k-1 : P.size()-1].A;
          const Vector& B = P[k].A;
          const Vector& C = P[k].B;
