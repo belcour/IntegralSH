@@ -49,7 +49,7 @@ inline std::vector<Eigen::MatrixXf> LoadMatrices(const std::string& filename) {
       assert(s == 1);
       mat = Eigen::MatrixXf(nrows, ncols);
       s = std::fread(mat.data(), sizeof(float), nrows*ncols, out);
-      assert(s == nrows*ncols);
+      assert(s == size_t(nrows*ncols));
    }
    std::fclose(out);
 
@@ -76,7 +76,7 @@ inline void SaveMatrices(const std::string& filename,
       s = std::fwrite(&ncols, sizeof(int), 1, out);
       assert(s == 1);
       s = std::fwrite(mat.data(), sizeof(float), nrows*ncols, out);
-      assert(s == nrows*ncols);
+      assert(s == size_t(nrows*ncols));
    }
    std::fclose(out);
 }
