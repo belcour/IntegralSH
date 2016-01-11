@@ -9,7 +9,7 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 set(CMAKE_BUILD_TYPE DEBUG)
 
 if ( CMAKE_COMPILER_IS_GNUCC )
-   add_definitions ("-Wall")
+   add_definitions ("-Wall -pedantic")
 endif ( CMAKE_COMPILER_IS_GNUCC )
 
 include_directories ("include" "externals/eigen" "externals/glm" ".")
