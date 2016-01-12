@@ -94,18 +94,18 @@ inline Eigen::VectorXf LineIntegral(const Vector& A, const Vector& B,
 
    // Note: expanding the (I-ssT)B expression from Arvo's LineIntegral pseudo
    // code to the projection of B on plane with A as normal.
-   auto s = Vector::Normalize(A);
-   auto t = Vector::Normalize(B - Vector::Dot(s, B)*s);
+   const auto s = Vector::Normalize(A);
+   const auto t = Vector::Normalize(B - Vector::Dot(s, B)*s);
 
-   auto a = Vector::Dot(w, s);
-   auto b = Vector::Dot(w, t);
-   auto c = sqrt(a*a + b*b);
+   const auto a = Vector::Dot(w, s);
+   const auto b = Vector::Dot(w, t);
+   const auto c = sqrt(a*a + b*b);
 
    // Compute the arc-length on which to compute the integral of the moment
    // function and the shift 'p' that change the integral to the integral of
    // a shifted cosine.
-   auto l = acos(Vector::Dot(s, B) / Vector::Dot(B,B));
-   auto p = atan2(b, a);
+   const auto l = acos(Vector::Dot(s, B) / Vector::Dot(B,B));
+   const auto p = atan2(b, a);
 
    return CosSumIntegral(-p, l-p, c, n);
 }
@@ -123,9 +123,9 @@ inline Eigen::VectorXf BoundaryIntegral(const Polygon& P, const Vector& w,
    // Init to zero
    Eigen::VectorXf b = Eigen::VectorXf::Zero(n+2);
 
-   for(auto edge : P) {
+   for(auto& edge : P) {
       // Compute the edge normal
-      auto normal = Vector::Normalize(Vector::Cross(edge.A, edge.B));
+      const auto normal = Vector::Normalize(Vector::Cross(edge.A, edge.B));
 
       // Add the egde integral to the total integral
       const auto dotNV   = Vector::Dot(normal, v);
@@ -181,7 +181,7 @@ inline float SolidAngle(const Polygon& P) {
          z *= zk;
       }
       const float arg = std::arg(z);
-      return (arg < 0.0f) ? -arg : 2.0*M_PI - arg;
+      return arg;
    }
 }
 
@@ -205,8 +205,14 @@ inline bool CheckPolygon(const Poylgon& P) {
       return Vector::Dot(P[0].A, N) <= 0.0f;
 //*/
    } else {
-      assert(false);
-      return false;
+      bool result = true;
+      for(unsigned int k=0; k<P.size(); ++k) {
+         const int k2 = (k < P.size()-1) ? k+1 : 0;
+         const auto D = (P[k].A + P[k].B + P[k2].B) / 3.0f;
+         const auto N = Vector::Cross(P[k].B-P[k].A, P[k2].B-P[k].A);
+         result &= Vector::Dot(D, N) <= 0.0f;
+      }
+      return result;
    }
 }
 
@@ -231,6 +237,7 @@ inline Eigen::VectorXf AxialMoment(const Polygon& P, const Vector& w, int n) {
    // Check if the polygon is well oriented
    const bool check = CheckPolygon<Polygon, Vector>(P);
    if(!check) {
+      std::cerr << "Check your Polygon orientation!" << std::endl;
       return Eigen::VectorXf::Zero(n+2);
    }
 #endif
