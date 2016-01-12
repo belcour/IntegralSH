@@ -39,38 +39,6 @@ inline bool closeTo(const T& a, const std::pair<T,T>& b) {
    return (a < b.first + b.second) && (a > b.first - b.second);
 }
 
-struct Edge {
-   Edge(const glm::vec3& a, const glm::vec3& b) : A(a), B(b) {}
-   glm::vec3 A, B;
-};
-
-/* 'The Triangle' structure represent a spherical triangle of three coordinates
- * A, B and C by storing its Edges in a vcetor.
- *
- * TODO: Extend to the polygon structure
- */
-struct Triangle : public std::vector<Edge> {
-   Triangle() {
-   }
-   Triangle(const glm::vec3& A, const glm::vec3& B, const glm::vec3& C) {
-     this->push_back(Edge(A, B));
-     this->push_back(Edge(B, C));
-     this->push_back(Edge(C, A));
-   }
-};
-
-struct Quad: public std::vector<Edge> {
-   Quad() {
-   }
-   Quad(const glm::vec3& A, const glm::vec3& B,
-        const glm::vec3& C, const glm::vec3& D) {
-     this->push_back(Edge(A, B));
-     this->push_back(Edge(B, C));
-     this->push_back(Edge(C, D));
-     this->push_back(Edge(D, A));
-   }
-};
-
 struct Vector : public glm::vec3 {
 
    Vector() : glm::vec3() {}
@@ -91,6 +59,38 @@ struct Vector : public glm::vec3 {
 
    static inline float Length(const glm::vec3& a) {
       return glm::length(a);
+   }
+};
+
+struct Edge {
+   Edge(const Vector& a, const Vector& b) : A(a), B(b) {}
+   Vector A, B;
+};
+
+/* 'The Triangle' structure represent a spherical triangle of three coordinates
+ * A, B and C by storing its Edges in a vcetor.
+ *
+ * TODO: Extend to the polygon structure
+ */
+struct Triangle : public std::vector<Edge> {
+   Triangle() {
+   }
+   Triangle(const Vector& A, const Vector& B, const Vector& C) {
+     this->push_back(Edge(A, B));
+     this->push_back(Edge(B, C));
+     this->push_back(Edge(C, A));
+   }
+};
+
+struct Quad: public std::vector<Edge> {
+   Quad() {
+   }
+   Quad(const Vector& A, const Vector& B,
+        const Vector& C, const Vector& D) {
+     this->push_back(Edge(A, B));
+     this->push_back(Edge(B, C));
+     this->push_back(Edge(C, D));
+     this->push_back(Edge(D, A));
    }
 };
 

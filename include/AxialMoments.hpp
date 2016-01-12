@@ -192,8 +192,8 @@ inline float SolidAngle(const Polygon& P) {
  * the triangle using the orientation. The normal and the centroid must match
  * orientation for the normal of edges to be outwards.
  */
-template<class Poylgon, class Vector>
-inline bool CheckPolygon(const Poylgon& P) {
+template<class Polygon, class Vector>
+inline bool CheckPolygon(const Polygon& P) {
    if(P.size() == 3) {
 //*    // Check with respect to centroid
       const auto D = (P[0].A + P[1].A + P[2].A) / 3.0f;
@@ -205,14 +205,26 @@ inline bool CheckPolygon(const Poylgon& P) {
       return Vector::Dot(P[0].A, N) <= 0.0f;
 //*/
    } else {
-      bool result = true;
-      for(unsigned int k=0; k<P.size(); ++k) {
-         const int k2 = (k < P.size()-1) ? k+1 : 0;
-         const auto D = (P[k].A + P[k].B + P[k2].B) / 3.0f;
-         const auto N = Vector::Cross(P[k].B-P[k].A, P[k2].B-P[k].A);
-         result &= Vector::Dot(D, N) <= 0.0f;
+      // This is a heuristic to select a point on the bounding box of the
+      // polygon. The orientation test is then computed on this particular
+      // corner.
+      unsigned int K = 0;
+      const Vector* minX = &P[0].B;
+      for(unsigned int k=1; k<P.size(); ++k) {
+         const Vector* X = &P[k].B;
+         if(X->x < minX->x || (X->x <= minX->x && X->y < minX->y)) {
+            minX = X;
+            K    = k;
+         }
       }
-      return result;
+
+      // Perform the test as defined on the Wikipedia page:
+      //   https://en.wikipedia.org/wiki/Curve_orientation
+      const int K2 = (K < P.size()-1) ? K+1 : 0;
+      const auto D = (P[K].A + P[K].B + P[K2].B) / 3.0f;
+      const auto N = Vector::Cross(P[K].B-P[K].A, P[K2].B-P[K].A);
+      const bool r = Vector::Dot(D, N) <= 0.0f;
+      return r;
    }
 }
 
@@ -237,7 +249,6 @@ inline Eigen::VectorXf AxialMoment(const Polygon& P, const Vector& w, int n) {
    // Check if the polygon is well oriented
    const bool check = CheckPolygon<Polygon, Vector>(P);
    if(!check) {
-      std::cerr << "Check your Polygon orientation!" << std::endl;
       return Eigen::VectorXf::Zero(n+2);
    }
 #endif
