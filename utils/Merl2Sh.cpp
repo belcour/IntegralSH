@@ -89,7 +89,7 @@ struct MerlProjectionThread : public std::thread {
 };
 
 int MerlProjectionMatrix(const std::string& filename,
-                         int order = 18, int N = 5000) {
+                         int order = 18, int N = 100000) {
 
    // Constants
    const int size = SH::Terms(order);
@@ -167,7 +167,8 @@ int MerlProjectionMatrix(const std::string& filename,
    return nb_fails;
 }
 
-bool parseArguments(int argc, char** argv, std::string& filename, int& order) {
+bool parseArguments(int argc, char** argv, std::string& filename,
+                    int& order, int& nb) {
 
    // Loop over all the different elements of the command line and search for
    // some patterns
@@ -175,8 +176,11 @@ bool parseArguments(int argc, char** argv, std::string& filename, int& order) {
       if(argv[k] == std::string("-h") || argv[k] == std::string("--help")) {
          std::cerr << "Usage: merl2sh [options] filename.binary" << std::endl;
          return false;
-      } else if((argv[k] == std::string( "-o") || argv[k] == std::string("--order")) && k+1<argc)
+      } else if((argv[k] == std::string( "-o") || argv[k] == std::string("--order")) && k+1<argc) {
          order = std::atoi(argv[k+1]);
+      } else if((argv[k] == std::string( "-n") || argv[k] == std::string("--nb")) && k+1<argc) {
+         nb = std::atoi(argv[k+1]);
+      }
    }
 
    // The filename to convert is the last argument of the command line.
@@ -192,13 +196,14 @@ int main(int argc, char** argv) {
 
    int nb_fails = 0;
    std::string filename;
-   int order;
-   if(! parseArguments(argc, argv, filename, order)) {
+   int order = 3;
+   int nb = 10000;
+   if(! parseArguments(argc, argv, filename, order, nb)) {
       return EXIT_SUCCESS;
    }
 
    // Load an example
-   nb_fails += MerlProjectionMatrix(argv[1], order);
+   nb_fails += MerlProjectionMatrix(argv[argc-1], order, nb);
 
    if(nb_fails > 0) {
       return EXIT_FAILURE;

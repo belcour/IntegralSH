@@ -77,48 +77,63 @@ int TestMoments(const glm::vec3& w, const Triangle& tri,
    return nb_fails;
 }
 
-float MonteCarloSolidAngle(const Triangle& triangle) {
+std::pair<float,float> MonteCarloSolidAngle(const Triangle& triangle) {
 
    // Number of MC samples
    const int M = 10000000;
-   float val = 0.0f;
+   float mean  = 0.0f;
+   float var   = 0.0f;
+   float fact  = 4.0f*M_PI;
    for(int k=0; k<M; ++k) {
 
       // Sample a direction on the sphere
       glm::vec3 d = Sample();
 
       if(HitTriangle(triangle, d)) {
-         val += 1.0f;
+         mean += fact;
+         var  += fact*fact;
       }
 
    }
-   return 4.0f*M_PI *val / M;
+   mean = mean / float(M);
+   var  = var / float(M-1) - mean*mean;
+   return std::pair<float,float>(mean, 5.0f*sqrt(var/M));
 }
 
-int TestSolidAngle(const Triangle& tri, float Epsilon = 1.0E-5) {
+template<class Polygon>
+int TestSolidAngle(const Polygon& polygon, float Epsilon = 1.0E-5) {
 
-   std::cout << "Triangle set using:" << std::endl;
-   std::cout << " + A = : " << tri[0].A << std::endl;
-   std::cout << " + B = : " << tri[1].A << std::endl;
-   std::cout << " + C = : " << tri[2].A << std::endl;
+   std::cout << "Quad set using:" << std::endl;
+   for(unsigned int k=0; k<polygon.size(); ++k)
+      std::cout << " + " << char('A'+k) << " = : " << polygon[k].A << std::endl;
    std::cout << std::endl;
 
    // Track the number of failed tests
    int nb_fails = 0;
 
-   auto analytical = SolidAngle<Triangle, Vector>(tri);
+   auto analytical = SolidAngle<Polygon, Vector>(polygon);
    std::cout << "Analytical solid angle : " << analytical << std::endl;
 
-   auto mc = MonteCarloSolidAngle(tri);
-   std::cout << "MC solid angle : " << mc << std::endl;
+   std::pair<float, float> mc;
+   if(polygon.size() == 3) {
+      Triangle tr = Triangle(polygon[0].A, polygon[1].A, polygon[2].A);
+      mc  = MonteCarloSolidAngle(tr);
+   } else if(polygon.size() == 4) {
+      Triangle tr = Triangle(polygon[0].A, polygon[1].A, polygon[2].A);
+      mc  = MonteCarloSolidAngle(tr);
+      tr  = Triangle(polygon[1].A, polygon[2].A, polygon[3].A);
+      auto temp = MonteCarloSolidAngle(tr);
+      mc.first  += temp.first;
+      mc.second += temp.second;
+   }
+   std::cout << "MC solid angle : " << mc.first
+                                    << " ± " << mc.second << std::endl;
 
-   if(std::abs(analytical - mc) > Epsilon*std::abs(analytical) ||
-      std::isnan(analytical)) {
+   if(!closeTo(analytical, mc) || std::isnan(analytical)) {
       std::cerr << "Error: solid angle differs from MC!" << std::endl;
-      std::cerr << "       error is = " << std::abs(analytical - mc) << std::endl;
+      std::cerr << "       error is = " << std::abs(analytical - mc.first) << std::endl;
       ++nb_fails;
    }
-
    std::cout << std::endl;
 
    return nb_fails;
@@ -133,7 +148,7 @@ int main(int argc, char** argv) {
 
 
    // Generate a triangle + lobe direction configuration
-   glm::vec3 A, B, C, w;
+   glm::vec3 A, B, C, D, w;
    Triangle tri;
 
 
@@ -144,8 +159,13 @@ int main(int argc, char** argv) {
    C = glm::vec3( 0.0, 0.5, 1.0);
    tri = Triangle(glm::normalize(A), glm::normalize(B), glm::normalize(C));
 
-   nb_fails += TestSolidAngle(tri, Epsilon);
+   nb_fails += TestSolidAngle<Triangle>(tri, Epsilon);
 
+   B = glm::vec3( 0.5, 0.5, 1.0);
+   C = glm::vec3(-0.5, 0.5, 1.0);
+   D = glm::vec3(-0.5,-0.5, 1.0);
+   Quad quad = Quad(glm::normalize(A), glm::normalize(B), glm::normalize(C), glm::normalize(D));
+   nb_fails += TestSolidAngle<Quad>(quad, Epsilon);
 
    /* Check the moments */
 
