@@ -4,7 +4,6 @@
 #include <Eigen/Core>
 
 // STL includes
-#include <iostream>
 #include <cassert>
 #include <vector>
 
