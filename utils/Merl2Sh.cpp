@@ -32,7 +32,7 @@ struct MerlProjectionThread : public std::thread {
                         int order, int skip, int nthread) :
       std::thread(&MerlProjectionThread::run, this, brdf, ws, skip, nthread),
       order(order),
-      cijs(3, Eigen::MatrixXf::Zero(SH::Terms(order), SH::Terms(order)))
+      cijs(6, Eigen::MatrixXf::Zero(SH::Terms(order), SH::Terms(order)))
    {}
 
    void run(const MerlBRDF* brdf,
@@ -40,6 +40,7 @@ struct MerlProjectionThread : public std::thread {
             int skip, int nthread) {
 
       Eigen::VectorXf ylmo(SH::Terms(order));
+      Eigen::VectorXf ylmi(SH::Terms(order));
       for(unsigned int i=skip; i<dirs->size(); i+=nthread) {
          const Vector& wo = (*dirs)[i];
 
@@ -59,12 +60,17 @@ struct MerlProjectionThread : public std::thread {
 
             // Evaluate the BRDF value
             const auto rgb = brdf->value<Vector, Vector>(wi, wo);
-            const auto ylmi = SH::FastBasis(wi, order);
+            SH::FastBasis(wi, order, ylmi);
 
             const Eigen::MatrixXf mat = ylmo * ylmi.transpose();
-            cijs[0] += rgb[0]*mat;
-            cijs[1] += rgb[1]*mat;
-            cijs[2] += rgb[2]*mat;
+            cijs[0] += rgb[0] * mat;
+            cijs[1] += rgb[1] * mat;
+            cijs[2] += rgb[2] * mat;
+            // Note: Here the correct weighting should be with respect to wi.z
+            // but I use wo.z since it allows to reduce the ringing drastically.
+            cijs[3] += rgb[0] * wo.z * mat;
+            cijs[4] += rgb[1] * wo.z * mat;
+            cijs[5] += rgb[2] * wo.z * mat;
          }
       }
    }
@@ -89,7 +95,7 @@ int MerlProjectionMatrix(const std::string& filename,
    std::cout << "Will output to \"" << ofilename << "\"" << std::endl;
 
    // Values
-   std::vector<Eigen::MatrixXf> cijs(3, Eigen::MatrixXf::Zero(size, size));
+   std::vector<Eigen::MatrixXf> cijs(6, Eigen::MatrixXf::Zero(size, size));
    const auto dirs = SamplingFibonacci<Vector>(N);
 
    const int nbthreads = std::thread::hardware_concurrency();
@@ -104,12 +110,18 @@ int MerlProjectionMatrix(const std::string& filename,
       cijs[0] += th->cijs[0];
       cijs[1] += th->cijs[1];
       cijs[2] += th->cijs[2];
+      cijs[3] += th->cijs[3];
+      cijs[4] += th->cijs[4];
+      cijs[5] += th->cijs[5];
       delete th;
    }
    const float factor = 16.0*M_PI*M_PI / float(N*N);
    cijs[0] *= factor;
    cijs[1] *= factor;
    cijs[2] *= factor;
+   cijs[3] *= factor;
+   cijs[4] *= factor;
+   cijs[5] *= factor;
 
    SaveMatrices(ofilename, cijs);
 
@@ -160,9 +172,11 @@ bool parseArguments(int argc, char** argv, std::string& filename,
       if(argv[k] == std::string("-h") || argv[k] == std::string("--help")) {
          std::cerr << "Usage: merl2sh [options] filename.binary" << std::endl;
          return false;
-      } else if((argv[k] == std::string( "-o") || argv[k] == std::string("--order")) && k+1<argc) {
+      }
+      if((argv[k] == std::string( "-o") || argv[k] == std::string("--order")) && k+1<argc) {
          order = std::atoi(argv[k+1]);
-      } else if((argv[k] == std::string( "-n") || argv[k] == std::string("--nb")) && k+1<argc) {
+      }
+      if((argv[k] == std::string( "-n") || argv[k] == std::string("--nb")) && k+1<argc) {
          nb = std::atoi(argv[k+1]);
       }
    }

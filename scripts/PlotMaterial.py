@@ -1,15 +1,16 @@
 #!/usr/bin/python
 
-import numpy as np
-import matplotlib.pyplot as plt
-
-directory = '.'
+import sys
+directory = sys.argv[1]
 
 from glob import glob
 from os   import path
 files = glob(path.join(directory, '*.gnuplot'))
 
+import numpy as np
+import matplotlib.pyplot as plt
 for f in files:
+    print '>> Process data file ' + f
     matrix = np.loadtxt(f)
 
     X = matrix[:, [0]]
@@ -17,5 +18,7 @@ for f in files:
     Z = matrix[:, [5]]
     plt.plot(X, Y)
     plt.plot(X, Z)
-    plt.savefig(f.replace('gnuplot', 'png'))
+    outfile = f.replace('gnuplot', 'png')
+    print '>> Saving to ' + outfile + '\n'
+    plt.savefig(outfile)
     plt.clf()
