@@ -62,15 +62,24 @@ struct MerlProjectionThread : public std::thread {
             const auto rgb = brdf->value<Vector, Vector>(wi, wo);
             SH::FastBasis(wi, order, ylmi);
 
-            const Eigen::MatrixXf mat = ylmo * ylmi.transpose();
+            Eigen::MatrixXf mat = ylmo * ylmi.transpose();
+#ifdef SYMMETRIZE
+            mat = 0.5f*(mat + mat.transpose());
+#endif
             cijs[0] += rgb[0] * mat;
             cijs[1] += rgb[1] * mat;
             cijs[2] += rgb[2] * mat;
             // Note: Here the correct weighting should be with respect to wi.z
             // but I use wo.z since it allows to reduce the ringing drastically.
+#ifndef LOOKS_BETTER
             cijs[3] += rgb[0] * wo.z * mat;
             cijs[4] += rgb[1] * wo.z * mat;
             cijs[5] += rgb[2] * wo.z * mat;
+#else // CORRECT
+            cijs[3] += rgb[0] * wi.z * mat;
+            cijs[4] += rgb[1] * wi.z * mat;
+            cijs[5] += rgb[2] * wi.z * mat;
+#endif
          }
       }
    }

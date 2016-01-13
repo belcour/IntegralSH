@@ -52,6 +52,7 @@ add_test(TestProduct  TestProduct)
 # Add SH examples
 add_executable (Merl2Sh utils/Merl2Sh.cpp)
 target_compile_features(Merl2Sh PRIVATE cxx_range_for)
+target_compile_options(Merl2Sh INTERFACE -O3 -msse3 -mfpmath=sse)
 target_link_libraries(Merl2Sh ${CMAKE_THREAD_LIBS_INIT})
 
 
