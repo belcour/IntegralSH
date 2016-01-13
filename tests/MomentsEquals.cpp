@@ -5,6 +5,9 @@
 // Include GLM
 #include <glm/glm.hpp>
 
+// Include STL
+#include <iostream>
+
 /* Check if all computed moments are equals between the two configurations.
  */
 int CheckEquals(const glm::vec3& wA, const Triangle& triA,
@@ -18,10 +21,9 @@ int CheckEquals(const glm::vec3& wA, const Triangle& triA,
    auto momentsB = AxialMoment<Triangle, Vector>(triB, wB, nMax);
 
    // Test the difference between analytical code and MC
-   for(int n=nMin; n<=nMax; ++n) {
-      const auto diff = std::abs(momentsA[n] - momentsB[n]);
-      if(diff > Epsilon*std::abs(momentsA[n])) {
-         ++nb_fails;
+   if(!momentsA.isApprox(momentsB)) {
+      ++nb_fails;
+      for(unsigned int n=0; n<nMax; ++n) {
          std::cout << "Error for n=" << n << " : "
                    << momentsA[n] << " != " << momentsB[n] << std::endl;
       }

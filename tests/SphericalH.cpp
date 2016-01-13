@@ -15,23 +15,6 @@
 // GLM include
 #include <glm/glm.hpp>
 
-struct SH {
-
-   // Inline for FastBasis
-   static inline Eigen::VectorXf FastBasis(const Vector& w, int lmax) {
-      return SHEvalFast<Vector>(w, lmax);
-   }
-
-   // Inline for Terms
-   static inline int Terms(int band) {
-      return SHTerms(band);
-   }
-
-   // Inline for Index
-   static inline int Index(int l, int m) {
-      return SHIndex(l, m);
-   }
-};
 
 struct CosPowFunctor {
    // Constructor
@@ -109,6 +92,7 @@ std::pair<float,float> MonteCarloSH(const Eigen::VectorXf& clm,
    static std::uniform_real_distribution<float> dist(0.0,1.0);
 
    const int order = sqrt(clm.size());
+   Eigen::VectorXf ylm(clm.size());
 
    // Number of MC samples
    const int M = 10000000;
@@ -124,7 +108,7 @@ std::pair<float,float> MonteCarloSH(const Eigen::VectorXf& clm,
       const Vector d  = Sample();
 #endif
 
-      const auto ylm = SHEvalFast<Vector>(d, order-1);
+      SH::FastBasis(d, order-1, ylm);
 
       if(HitTriangle(triangle, d)) {
          const auto val = ylm.dot(clm) / pdf;

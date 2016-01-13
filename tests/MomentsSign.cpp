@@ -5,13 +5,16 @@
 // Include GLM
 #include <glm/glm.hpp>
 
+// Include STL
+#include <iostream>
+
 /* Check if all computed moments are positive.
  * This happens when the triangle covers a region with <w,v> >= 0 for all v in
  * the triangle.
  */
-int CheckPositive(const glm::vec3& w, const Triangle& tri, 
+int CheckPositive(const glm::vec3& w, const Triangle& tri,
                   int nMin, int nMax) {
-   
+
    std::cout << "Triangle set using:" << std::endl;
    std::cout << " + A = : " << tri[0].A << std::endl;
    std::cout << " + B = : " << tri[1].A << std::endl;
@@ -30,7 +33,7 @@ int CheckPositive(const glm::vec3& w, const Triangle& tri,
    for(int n=nMin; n<=nMax; ++n) {
       if(moments[n] < 0.0f) {
          ++nb_fails;
-         std::cout << "Error for n=" << n << " : " 
+         std::cout << "Error for n=" << n << " : "
                    << moments[n] << " < 0" << std::endl;
       } else if(std::isnan(moments[n])) {
           ++nb_fails;
@@ -50,9 +53,9 @@ int CheckPositive(const glm::vec3& w, const Triangle& tri,
  * This happens when the triangle covers a region with <w,v> <= 0 for all v in
  * the triangle.
  */
-int CheckAlternate(const glm::vec3& w, const Triangle& tri, 
+int CheckAlternate(const glm::vec3& w, const Triangle& tri,
                    int nMin, int nMax) {
-   
+
    std::cout << "Triangle set using:" << std::endl;
    std::cout << " + A = : " << tri[0].A << std::endl;
    std::cout << " + B = : " << tri[1].A << std::endl;
@@ -71,11 +74,11 @@ int CheckAlternate(const glm::vec3& w, const Triangle& tri,
    for(int n=nMin; n<=nMax; ++n) {
       if(moments[n] < 0.0f && n % 2 == 0) {
          ++nb_fails;
-         std::cout << "Error for n=" << n << " : " 
+         std::cout << "Error for n=" << n << " : "
                    << moments[n] << " < 0" << std::endl;
       } else if(moments[n] > 0.0f && n % 2 == 1) {
          ++nb_fails;
-         std::cout << "Error for n=" << n << " : " 
+         std::cout << "Error for n=" << n << " : "
                    << moments[n] << " > 0" << std::endl;
       } else if(std::isnan(moments[n])) {
           ++nb_fails;
@@ -101,16 +104,16 @@ int main(int argc, char** argv) {
    C = glm::vec3(0.5, Eps, 1.0);
    Triangle  tri(glm::normalize(A), glm::normalize(B), glm::normalize(C));
    glm::vec3 w;
-   
+
    // Track the number of failed tests
    int nMin = 0, nMax = 10;
    int nb_fails = 0;
- 
+
 #ifdef ONLY_CHECK
    // Change the moments' axis
    w = glm::normalize(glm::vec3(0, 0, 1));
    nb_fails += CheckPositive(w, tri, nMin, nMax);
-   
+
    w = glm::normalize(glm::vec3(0, 0, -1));
    nb_fails += CheckAlternate(w, tri, nMin, nMax);
 #endif

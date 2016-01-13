@@ -15,24 +15,6 @@
 // GLM include
 #include <glm/glm.hpp>
 
-struct SH {
-
-   // Inline for FastBasis
-   static inline Eigen::VectorXf FastBasis(const Vector& w, int lmax) {
-      return SHEvalFast<Vector>(w, lmax);
-   }
-
-   // Inline for Terms
-   static inline int Terms(int band) {
-      return SHTerms(band);
-   }
-
-   // Inline for Index
-   static inline int Index(int l, int m) {
-      return SHIndex(l, m);
-   }
-};
-
 struct ProductSH {
 
    const Eigen::VectorXf _flm, _glm;
@@ -221,7 +203,8 @@ std::pair<float,float> MonteCarloSH(const Eigen::VectorXf& alm,
    static std::mt19937 gen(0);
    static std::uniform_real_distribution<float> dist(0.0,1.0);
 
-   const int order = sqrt(alm.size());
+   const int order = sqrt(alm.size())-1;
+   Eigen::VectorXf ylm(alm.size());
 
    // Number of MC samples
    const int M = 10000000;
@@ -237,7 +220,7 @@ std::pair<float,float> MonteCarloSH(const Eigen::VectorXf& alm,
       const Vector d  = Sample();
 #endif
 
-      const auto ylm = SHEvalFast<Vector>(d, order-1);
+      SH::FastBasis(d, order, ylm);
 
       if(HitTriangle(triangle, d)) {
          const auto val = (ylm.dot(alm)*ylm.dot(blm)) / pdf;

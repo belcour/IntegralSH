@@ -29,13 +29,13 @@ inline int SHIndex(int l, int m) {
  * order `order`.
  */
 template<class Vector>
-Eigen::VectorXf SHEvalFast(const Vector& w, int order) {
+Eigen::VectorXf SHEvalFast(const Vector& w, int order, Eigen::VectorXf& pOut) {
    const float fX = w[0];
    const float fY = w[1];
    const float fZ = w[2];
 
-   const int nb_vals = SHTerms(order);
-   auto pOut = Eigen::VectorXf(nb_vals);
+   //const int nb_vals = SHTerms(order);
+   //auto pOut = Eigen::VectorXf(nb_vals);
 
    order = order+1;
 
@@ -4074,7 +4074,9 @@ Eigen::VectorXf DiffuseCoeffsSH(const Vector& w, int order) {
       zhCoeffs[l] = sign * sqrt(M_PI*(2*l+1)) * factor / ((l+2)*(l-1));
    }
 
-   Eigen::VectorXf shCoeffs = SHEvalFast<Vector>(w, order);
+   const int nb_vals = SHTerms(order);
+   Eigen::VectorXf shCoeffs(nb_vals);
+   SHEvalFast<Vector>(w, order, shCoeffs);
    for(int l=0; l<=order; ++l) {
       const float factor = zhCoeffs[l] * sqrt(4*M_PI / (2*l+1));
       for(int m=0; m<2*l+1; ++m) {

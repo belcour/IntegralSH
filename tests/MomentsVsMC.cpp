@@ -93,7 +93,7 @@ int TestMoments(const glm::vec3& w, const Polygon& polygon,
       auto temp = MonteCarloMoments(tr, w, nMax);
       //std::cout << temp.first << std::endl << std::endl;
       mc.first  += temp.first;
-      mc.second += temp.second;
+      mc.second  = (mc.second.cwiseAbs2() + temp.second.cwiseAbs2()).cwiseSqrt();
    }
 
    // Test the difference between analytical code and MC
@@ -190,18 +190,6 @@ int main(int argc, char** argv) {
    glm::vec3 A, B, C, D, w;
    Triangle tri; Quad quad;
 
-
-   // Check on Quads with the unit upper direction and randomly choosen
-   // directions.
-   A = glm::vec3( 0.5,-0.5, 1.0);
-   B = glm::vec3(-0.5,-0.5, 1.0);
-   C = glm::vec3(-0.5, 0.5, 1.0);
-   D = glm::vec3( 0.5, 0.5, 1.0);
-   quad = Quad(glm::normalize(A), glm::normalize(B), glm::normalize(C), glm::normalize(D));
-   w = glm::normalize(glm::vec3(0, 0, 1));
-   nb_fails += TestMoments<Quad>(w, quad, nMin, nMax, Epsilon);
-   w = glm::normalize(glm::vec3(1, 0, 0));
-   nb_fails += TestMoments<Quad>(w, quad, nMin, nMax, Epsilon);
 
    /* Check the solid angle */
 

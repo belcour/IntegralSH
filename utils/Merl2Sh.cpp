@@ -22,25 +22,6 @@
 // Include Eigen
 #include <Eigen/Core>
 
-struct SH {
-
-   // Inline for FastBasis
-   static inline Eigen::VectorXf FastBasis(const Vector& w, int lmax) {
-      return SHEvalFast<Vector>(w, lmax);
-   }
-
-   // Inline for Terms
-   static inline int Terms(int band) {
-      return SHTerms(band);
-   }
-
-   // Inline for Index
-   static inline int Index(int l, int m) {
-      return SHIndex(l, m);
-   }
-};
-
-
 struct MerlProjectionThread : public std::thread {
 
    int order;
@@ -58,6 +39,7 @@ struct MerlProjectionThread : public std::thread {
             const std::vector<Vector>* dirs,
             int skip, int nthread) {
 
+      Eigen::VectorXf ylmo(SH::Terms(order));
       for(unsigned int i=skip; i<dirs->size(); i+=nthread) {
          const Vector& wo = (*dirs)[i];
 
@@ -68,7 +50,7 @@ struct MerlProjectionThread : public std::thread {
 
          // Skip below the horizon configuration
          if(wo.z < 0.0) continue;
-         const auto ylmo = SH::FastBasis(wo, order);
+         SH::FastBasis(wo, order, ylmo);
 
          for(unsigned int j=0; j<dirs->size(); ++j) {
             const Vector& wi = (*dirs)[j];
@@ -132,7 +114,9 @@ int MerlProjectionMatrix(const std::string& filename,
    SaveMatrices(ofilename, cijs);
 
    // Print values
-   std::ofstream file("test.txt", std::ios_base::trunc);
+   std::string gfilename = filename;
+   gfilename.replace(k, std::string::npos, ".gnuplot");
+   std::ofstream file(gfilename.c_str(), std::ios_base::trunc);
    const float thetai = -0.5f*M_PI * 30.f/90.f;
    const Vector wi(sin(thetai), 0, cos(thetai));
    const auto ylmi = SH::FastBasis(wi, order);

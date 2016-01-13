@@ -48,10 +48,13 @@ int CheckRotation(int order = 5, int nbTrials = 10) {
    Eigen::VectorXf rclm = Eigen::VectorXf::Zero(SHTerms(order));
    rotation.Apply(clm, rclm);
 
+   Eigen::VectorXf ylm(SH::Terms(order));
+   Eigen::VectorXf rylm(SH::Terms(order));
+
    const auto dirs = SamplingFibonacci<Eigen::Vector3f>(nbTrials);
    for(auto& w : dirs) {
-      const Eigen::VectorXf ylm  = SHEvalFast<Eigen::Vector3f>(w, order);
-      const Eigen::VectorXf rylm = SHEvalFast<Eigen::Vector3f>(quaternion._transformVector(w), order);
+      SHEvalFast<Eigen::Vector3f>(w, order, ylm);
+      SHEvalFast<Eigen::Vector3f>(quaternion._transformVector(w), order, ylm);
 
       const float v  = ylm.dot(clm);
       const float rv = rylm.dot(rclm);
@@ -83,10 +86,13 @@ int CheckRotationExplicitMatrix(int order = 5, int nbTrials = 10) {
    Eigen::VectorXf rclm = Eigen::VectorXf::Zero(SHTerms(order));
    rotation.Apply(clm, rclm);
 
+   Eigen::VectorXf ylm(SH::Terms(order));
+   Eigen::VectorXf rylm(SH::Terms(order));
+
    const auto dirs = SamplingFibonacci<Eigen::Vector3f>(nbTrials);
    for(auto& w : dirs) {
-      const Eigen::VectorXf ylm  = SHEvalFast<Eigen::Vector3f>(w, order);
-      const Eigen::VectorXf rylm = SHEvalFast<Eigen::Vector3f>(quaternion._transformVector(w), order);
+      SHEvalFast<Eigen::Vector3f>(w, order, ylm);
+      SHEvalFast<Eigen::Vector3f>(quaternion._transformVector(w), order, rylm);
 
       const float v  = ylm.dot(clm);
       const float rv = rylm.dot(rclm);

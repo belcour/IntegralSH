@@ -9,8 +9,10 @@
 #include <utility>
 
 // Eigen CORE
-// Required for the template version of abs
 #include <Eigen/Core>
+
+// Local include
+#include "SH.hpp"
 
 /* _Is `a` close to `b` ?_
  *
@@ -205,3 +207,30 @@ bool HitTriangle(const Triangle& triangle, const Vector& w) {
    // No hit at all
    return false;
 }
+
+/* Spherical Harmonics wrapper for the code in 'SphericalHarmonics.hpp'
+ */
+struct SH {
+
+   // Inline for FastBasis
+   static inline Eigen::VectorXf FastBasis(const Vector& w, int lmax) {
+      const auto size = Terms(lmax);
+      Eigen::VectorXf res(size);
+      SHEvalFast<Vector>(w, lmax, res);
+      return res;
+   }
+   static inline void FastBasis(const Vector& w, int lmax, Eigen::VectorXf& clm) {
+      assert(clm.size() == Terms(lmax));
+      SHEvalFast<Vector>(w, lmax, clm);
+   }
+
+   // Inline for Terms
+   static inline int Terms(int band) {
+      return SHTerms(band);
+   }
+
+   // Inline for Index
+   static inline int Index(int l, int m) {
+      return SHIndex(l, m);
+   }
+};

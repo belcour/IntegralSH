@@ -16,26 +16,6 @@
 // GLM include
 #include <glm/glm.hpp>
 
-struct SH {
-   // Define the Vector type
-   typedef glm::vec3 Vector;
-
-   // Inline for FastBasis
-   static inline Eigen::VectorXf FastBasis(const Vector& w, int lmax) {
-      return SHEvalFast<Vector>(w, lmax);
-   }
-
-   // Inline for Terms
-   static inline int Terms(int band) {
-      return SHTerms(band);
-   }
-
-   // Inline for Index
-   static inline int Index(int l, int m) {
-      return SHIndex(l, m);
-   }
-};
-
 struct CosPowFunctor {
    // Constructor
    int _exp;
@@ -81,9 +61,9 @@ int CheckZHEqualsCosinePower(float Epsilon = 1.0E-3f) {
    std::cout << "Testing if the ZH => Cosine power is correct." << std::endl;
 
    // Values
-   const glm::vec3 n(0,0,1);
-   const glm::vec3 w = glm::normalize(glm::vec3(1,1,1));
-   const float dotWN = glm::dot(w, n);
+   const Vector n = glm::vec3(0,0,1);
+   const Vector w = glm::normalize(glm::vec3(1,1,1));
+   const float dotWN = Vector::Dot(w, n);
 
    // Number of orders
    const int lmax = 10;
@@ -98,7 +78,7 @@ int CheckZHEqualsCosinePower(float Epsilon = 1.0E-3f) {
 
    // SH Evaluation for w.
    // Zonal coefficients represent y_l (w · n).
-   auto ShBasis = SHEvalFast<glm::vec3>(w, lmax);
+   auto ShBasis = SH::FastBasis(w, lmax);
    auto ZhBasis = Eigen::VectorXf(lmax);
    for(int l=0; l<lmax; ++l) {
       ZhBasis[l] = ShBasis(SHIndex(l, 0));
@@ -134,7 +114,7 @@ int CheckZHExpansion(float Epsilon = 1.0E-3f) {
    Vector w = Vector::Normalize(Vector(0,0,1));
    std::cout << "Testing ZH == SH for Vector w = " << w << std::endl;
    auto zlm = RotatedZH(n, w, order);
-   auto ylm = SHEvalFast(w, order);
+   auto ylm = SH::FastBasis(w, order);
    for(int l=0; l<order; ++l) {
       if(! closeTo(zlm[l], ylm[SHIndex(l, 0)])) {
          ++nb_fails;
@@ -148,7 +128,7 @@ int CheckZHExpansion(float Epsilon = 1.0E-3f) {
    w = Vector::Normalize(Vector(1,0,0));
    std::cout << "Testing ZH == SH for Vector w = " << w << std::endl;
    zlm = RotatedZH(n, w, order);
-   ylm = SHEvalFast(w, order);
+   ylm = SH::FastBasis(w, order);
    for(int l=0; l<order; ++l) {
       if(! closeTo(zlm[l], ylm[SHIndex(l, 0)])) {
          ++nb_fails;
@@ -161,7 +141,7 @@ int CheckZHExpansion(float Epsilon = 1.0E-3f) {
    w = Vector::Normalize(Vector(1,1,1));
    std::cout << "Testing ZH == SH for Vector w = " << w << std::endl;
    zlm = RotatedZH(n, w, order);
-   ylm = SHEvalFast(w, order);
+   ylm = SH::FastBasis(w, order);
    for(int l=0; l<order; ++l) {
       if(! closeTo(zlm[l], ylm[SHIndex(l, 0)])) {
          ++nb_fails;
@@ -175,7 +155,7 @@ int CheckZHExpansion(float Epsilon = 1.0E-3f) {
    order = 1;
    std::cout << "Testing ZH == SH for Vector w = " << w << " with order = " << order << std::endl;
    zlm = RotatedZH(n, w, order);
-   ylm = SHEvalFast(w, order);
+   ylm = SH::FastBasis(w, order);
    for(int l=0; l<order; ++l) {
       if(! closeTo(zlm[l], ylm[SHIndex(l, 0)])) {
          ++nb_fails;
@@ -242,9 +222,11 @@ int CheckZHDecomposition(const std::vector<Vector>& directions,
                 << " / " << SHTerms(order) << std::endl;
    }
 
+   Eigen::VectorXf ylm(SH::Terms(order));
+
    for(auto& w : queries) {
       // Evaluate the SH function
-      const auto ylm = SHEvalFast<Vector>(w, order);
+      SH::FastBasis(w, order, ylm);
 
       // Evaluate the ZH function
       auto zlm = ZHEvalFast<Vector>(directions, w);
@@ -360,6 +342,7 @@ std::pair<float,float> MonteCarloSH(const Eigen::VectorXf& clm,
    static std::uniform_real_distribution<float> dist(0.0,1.0);
 
    const int order = sqrt(clm.size());
+   Eigen::VectorXf ylm(clm.size());
 
    // Number of MC samples
    const int M = 10000000;
@@ -375,7 +358,7 @@ std::pair<float,float> MonteCarloSH(const Eigen::VectorXf& clm,
       const Vector d  = Sample();
 #endif
 
-      const auto ylm = SHEvalFast<Vector>(d, order-1);
+      SH::FastBasis(d, order, ylm);
 
       if(HitTriangle(triangle, d)) {
          const auto val = ylm.dot(clm) / pdf;
