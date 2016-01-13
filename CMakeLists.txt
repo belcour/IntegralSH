@@ -53,3 +53,7 @@ add_test(TestProduct  TestProduct)
 add_executable (Merl2Sh utils/Merl2Sh.cpp)
 target_compile_features(Merl2Sh PRIVATE cxx_range_for)
 target_link_libraries(Merl2Sh ${CMAKE_THREAD_LIBS_INIT})
+
+
+add_executable (IntegralConvergence utils/IntegralConvergence.cpp)
+target_compile_features(IntegralConvergence PRIVATE cxx_range_for)

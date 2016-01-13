@@ -309,3 +309,37 @@ inline float computeSHIntegral(const Eigen::VectorXf& clm,
 
    return clm.dot(Prod * moments);
 }
+
+
+#ifdef LATER
+/* _Compute the SH Integral over a Spherial Triangle_
+ *
+ * This function is provided as an example of how to use the different
+ * components of this package. It is probably much faster to precompute the
+ * product `Prod` of the ZonalWeights and the Zonal to SH conversion matrix.
+ */
+template<class Triangle, class Vector, class SH>
+inline float computeSHIntegral(const Eigen::VectorXf& clm,
+                               const Triangle& triangle) {
+
+   // Get the order of the provided SH vector and compute the directional
+   // sampling of the sphere for rotated ZH/cosines.
+   const auto order = sqrt(clm.size())-1;
+   const auto basis = SamplingFibonacci<Vector>(2*order+1);
+
+   // Get the Zonal weights matrix and the Zlm -> Ylm conversion matrix
+   // and compute the product of the two: `Prod = A x Zw`.
+   const auto ZW = ZonalWeights<Vector>(basis);
+   const auto Y  = ZonalExpansion<SH, Vector>(basis);
+   const auto A  = computeInverse(Y);
+
+   const auto Prod = A*ZW;
+
+   // Analytical evaluation of the integral of power of cosines for
+   // the different basis elements up to the order defined by the
+   // number of elements in the basis
+   const auto moments = AxialMoments<Triangle, Vector>(triangle, basis);
+
+   return clm.dot(Prod * moments);
+}
+#endif
