@@ -39,8 +39,9 @@ struct MerlProjectionThread : public std::thread {
             const std::vector<Vector>* dirs,
             int skip, int nthread) {
 
-      Eigen::VectorXf ylmo(SH::Terms(order));
-      Eigen::VectorXf ylmi(SH::Terms(order));
+      const int size = SH::Terms(order);
+      Eigen::VectorXf ylmo(size);
+      Eigen::VectorXf ylmi(size);
       for(unsigned int i=skip; i<dirs->size(); i+=nthread) {
          const Vector& wo = (*dirs)[i];
 
