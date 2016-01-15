@@ -64,7 +64,7 @@ struct MerlProjectionThread : public std::thread {
             SH::FastBasis(wi, order, ylmi);
 
             Eigen::MatrixXf mat = ylmo * ylmi.transpose();
-#ifdef SYMMETRIZE
+#ifndef SYMMETRIZE
             mat = 0.5f*(mat + mat.transpose());
 #endif
             cijs[0] += rgb[0] * mat;
@@ -72,7 +72,7 @@ struct MerlProjectionThread : public std::thread {
             cijs[2] += rgb[2] * mat;
             // Note: Here the correct weighting should be with respect to wi.z
             // but I use wo.z since it allows to reduce the ringing drastically.
-#ifndef LOOKS_BETTER
+#ifdef LOOKS_BETTER
             cijs[3] += rgb[0] * wo.z * mat;
             cijs[4] += rgb[1] * wo.z * mat;
             cijs[5] += rgb[2] * wo.z * mat;
@@ -87,7 +87,7 @@ struct MerlProjectionThread : public std::thread {
 };
 
 int MerlProjectionMatrix(const std::string& filename,
-                         int order = 18, int N = 100000) {
+                         int order = 15, int N = 100000) {
 
    // Constants
    const int size = SH::Terms(order);
