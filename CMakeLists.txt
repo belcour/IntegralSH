@@ -54,6 +54,12 @@ add_executable (Merl2Sh utils/Merl2Sh.cpp)
 target_compile_features(Merl2Sh PRIVATE cxx_range_for)
 target_compile_options(Merl2Sh INTERFACE -O3 -msse3 -mfpmath=sse)
 target_link_libraries(Merl2Sh ${CMAKE_THREAD_LIBS_INIT})
+include_directories ("$ENV{ALTA_DIR}")
+add_executable (Alta2Sh utils/Alta2Sh.cpp)
+target_compile_features(Alta2Sh PRIVATE cxx_range_for)
+target_compile_options(Alta2Sh INTERFACE -O3 -msse3 -mfpmath=sse -m64 -march=nocona)
+set(LDDIR "$ENV{ALTA_LIB}")
+target_link_libraries(Alta2Sh ${CMAKE_THREAD_LIBS_INIT} -L${LDDIR} 'core' -m64)
 
 
 add_executable (IntegralConvergence utils/IntegralConvergence.cpp)
