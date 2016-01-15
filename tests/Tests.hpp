@@ -195,10 +195,10 @@ struct PolygonConstructor : public std::vector<Vector> {
             const float alpha = dotAn / (dotAn - dotBn);
             const Vector N  = Vector::Normalize(A + alpha*(B-A));
 
-            if(Vector::Dot(M, N) < 1) {
+            if(Vector::Dot(M, N) < 1.0f) {
                P.push_back(Edge(M, N));
             }
-            if(alpha > 0) {
+            if(alpha > 0 && Vector::Dot(N, B) < 1.0f) {
                P.push_back(Edge(N, B));
             }
 
@@ -212,14 +212,15 @@ struct PolygonConstructor : public std::vector<Vector> {
          // The next point is a valid one (above the horizon). Add the Edge
          // (A,B)
          } else if(dotAn >= 0 && dotBn >= 0) {
-            P.push_back(Edge(A, B));
+            if(Vector::Dot(A, B) < 1.0f) {
+               P.push_back(Edge(A, B));
+            }
          }
 
          // Update the loop variables.
          A = B;
          dotAn = dotBn;
       }
-      std::cout << std::endl;
       return P;
    }
 };

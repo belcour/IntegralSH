@@ -103,7 +103,8 @@ inline Eigen::VectorXf LineIntegral(const Vector& A, const Vector& B,
    // Compute the arc-length on which to compute the integral of the moment
    // function and the shift 'p' that change the integral to the integral of
    // a shifted cosine.
-   const auto l = acos(Vector::Dot(s, B) / Vector::Dot(B,B));
+   const auto r = Vector::Dot(s, B) / Vector::Dot(B,B);
+   const auto l = acos(clamp<float>(r, -1.0f, 1.0f));
    const auto p = atan2(b, a);
 
    return CosSumIntegral(-p, l-p, c, n);
