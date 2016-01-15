@@ -4,12 +4,14 @@ import sys
 
 import argparse
 parser = argparse.ArgumentParser()
+parser.add_argument('-r', default=False, help='Force recomputing solution if mats file already present')
 parser.add_argument('-o', default=15, help='Maximum band for the SH expansion')
 parser.add_argument('-n', default=500, help='Number of elements for the spherical quadrature')
 parser.add_argument('dir', metavar='dir', type=str, help='Ddirectory containing MERL database objects')
 args = parser.parse_args()
 order = str(args.o)
 N     = str(args.n)
+Rcmp  = args.r
 dir   = args.dir
 
 from glob import glob
@@ -30,7 +32,7 @@ from subprocess import call
 for f in files:
 
     output = path.splitext(f)[0] + '.mats'
-    if path.exists(output):
+    if (not Rcmp) and path.exists(output):
         continue;
 
     print '>> Process data file ' + f
