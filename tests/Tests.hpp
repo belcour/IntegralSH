@@ -7,6 +7,7 @@
 #include <vector>
 #include <random>
 #include <utility>
+#include <iostream>
 
 // Eigen CORE
 #include <Eigen/Core>
@@ -64,6 +65,12 @@ struct Vector : public glm::vec3 {
    }
 };
 
+std::ostream& operator<< (std::ostream& out, const glm::vec3& a) {
+   out << "[" << a.x << ", " << a.y << ", " << a.z << "]";
+   return out;
+}
+
+
 struct Edge {
    Edge(const Vector& a, const Vector& b) : A(a), B(b) {}
    Vector A, B;
@@ -96,10 +103,126 @@ struct Quad: public std::vector<Edge> {
    }
 };
 
-std::ostream& operator<< (std::ostream& out, const glm::vec3& a) {
-   out << "[" << a.x << ", " << a.y << ", " << a.z << "]";
+struct Polygon : public std::vector<Edge> {
+
+   // Constructor
+   Polygon() {
+   }
+   Polygon(const Vector& A, const Vector& B, const Vector& C) {
+      this->push_back(Edge(A, B));
+      this->push_back(Edge(B, C));
+      this->push_back(Edge(C, A));
+   }
+};
+
+std::ostream& operator<<(std::ostream& out, const Polygon& polygon) {
+   for(auto& edge : polygon) {
+      out << " + " << edge.A << std::endl;
+   }
    return out;
 }
+
+struct PolygonConstructor : public std::vector<Vector> {
+
+   // Constructor
+   PolygonConstructor() {
+   }
+   PolygonConstructor(const Vector& A, const Vector& B, const Vector& C) {
+      this->push_back(A);
+      this->push_back(B);
+      this->push_back(C);
+   }
+
+   Polygon ProjectToHemisphere(const Vector& p) const {
+      Polygon P;
+#ifdef REMOVE
+      std::cout << "A = " << P[0].A << std::endl;
+      std::cout << "B = " << P[1].A << std::endl;
+      std::cout << "C = " << P[2].A << std::endl;
+#endif
+      for(unsigned int k=0; k<this->size(); ++k) {
+         const Vector& A = this->at(k);
+         const Vector& B = (k == this->size()-1) ? this->at(0) : this->at(k+1);
+
+         P.push_back(Edge(Vector::Normalize(A-p), Vector::Normalize(B-p)));
+      }
+      return P;
+   }
+
+   /* Clamp the Polygon with respect to the Shading normal.
+    */
+   Polygon ProjectToHemisphere(const Vector& p, const Vector& n) const {
+      Polygon P;
+#ifdef REMOVE
+      std::cout << "A = " << P[0].A << std::endl;
+      std::cout << "B = " << P[1].A << std::endl;
+      std::cout << "C = " << P[2].A << std::endl;
+#endif
+      // Constant
+      const int size = this->size();
+
+      // Starting vector of the Edge. This vector can be clamped if necessary
+      // to account for the shading horizon.
+      int start = 0;
+      Vector A, M;
+      float dotAn;
+      bool condition = true;
+      do {
+         // Get the current element
+         A = Vector::Normalize(this->at(start) - p);
+
+         // Initial condition: the vertex needs to be above the horizon
+         dotAn = Vector::Dot(A, n);
+         condition = dotAn < 0.0;
+         ++start;
+
+      } while(condition && start<size);
+      --start;
+
+      // Return the empty polygon in case every vertex is below the horizon
+      if(start == size) { return P; }
+
+      for(unsigned int k=1; k<=size; ++k) {
+         const int next = (start + k) % size;
+         const Vector B = Vector::Normalize(this->at(next) - p);
+
+         const float dotBn = Vector::Dot(B, n);
+
+         // First case: the beginning of the Edge was below the hemisphere.
+         // Then we must create the intermediate point N and create an egde
+         // using M and N and another with N and B..
+         if(dotAn < 0 && dotBn >= 0) {
+            const float alpha = dotAn / (dotAn - dotBn);
+            const Vector N  = Vector::Normalize(A + alpha*(B-A));
+
+            if(Vector::Dot(M, N) < 1) {
+               P.push_back(Edge(M, N));
+            }
+            if(alpha > 0) {
+               P.push_back(Edge(N, B));
+            }
+
+         } else if(dotAn >= 0 && dotBn < 0) {
+            const float alpha = dotAn / (dotAn - dotBn);
+            M = Vector::Normalize(A + alpha*(B-A));
+            if(alpha > 0) {
+               P.push_back(Edge(A, M));
+            }
+
+         // The next point is a valid one (above the horizon). Add the Edge
+         // (A,B)
+         } else if(dotAn >= 0 && dotBn >= 0) {
+            P.push_back(Edge(A, B));
+         }
+
+         // Update the loop variables.
+         A = B;
+         dotAn = dotBn;
+      }
+      std::cout << std::endl;
+      return P;
+   }
+};
 
 std::mt19937 _test_gen(0);
 std::uniform_real_distribution<float> _test_dist(0.0,1.0);
