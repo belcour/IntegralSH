@@ -82,45 +82,61 @@ int TestPhongProjection(int order = 5, int exp = 1, float Epsilon = 1.0E-3f) {
    return nb_fails;
 }
 
-/* Compute the integral of the spherical function defined by the SH
- * coefficients `clm` over the spherical triangle using MC.
+/* Compute the projection of the HG phase function to Zonal Harmonics.
  */
-std::pair<float,float> MonteCarloSH(const Eigen::VectorXf& clm,
-                                    const Triangle& triangle) {
+Eigen::VectorXf HeyneyeProjection(float g, int order) {
 
-   static std::mt19937 gen(0);
-   static std::uniform_real_distribution<float> dist(0.0,1.0);
-
-   const int order = sqrt(clm.size());
-   Eigen::VectorXf ylm(clm.size());
-
-   // Number of MC samples
-   const int M = 10000000;
-   float mean = 0.0f;
-   float var  = 0.0f;
-   for(int k=0; k<M; ++k) {
-
-#ifdef USE_TRIANGLE_SAMPLING
-      float pdf;
-      const Vector d = SampleSphericalTriangle(triangle, pdf);
-#else // UNIFORM SAMPLING
-      const float pdf = 1.0f / (4.0f*M_PI);
-      const Vector d  = Sample();
-#endif
-
-      SH::FastBasis(d, order-1, ylm);
-
-      if(HitTriangle(triangle, d)) {
-         const auto val = ylm.dot(clm) / pdf;
-         mean += val;
-         var  += val*val;
-      }
-
+   // Fill the Zonal Coefficients
+   Eigen::VectorXf zhG = Eigen::VectorXf::Zero(SH::Terms(order));
+   zhG[0] = 1.0f/sqrt(4*M_PI);
+   float powg = g;
+   for(int k=1; k<order; ++k) {
+      const int   index = k + k*k;
+      const float factor = sqrt((2*k+1) / (4*M_PI));
+      zhG[index] = factor * powg;
+      powg *= g;
    }
 
-   mean /= M;
-   var   = var / (M-1) - mean*mean;
-   return std::pair<float,float>(mean, 5.0f*sqrt(var/M));
+   return zhG;
+}
+
+/* Return the values of the HG function aligned with the Z-axis
+ */
+float HeyneyeGreenstein(const Vector& w, float g) {
+   return ((1 - g*g) / pow(1 + g*g - 2*g*w.z, 3.0/2.0)) / (4.0f*M_PI);
+}
+
+/* Compare the projection of the HG function in ZH with its real values.
+ */
+int TestHeyneyeProjection(float g, int order) {
+
+   int nb_fails = 0;
+
+   // Get the HG approx
+   const Eigen::VectorXf zhG = HeyneyeProjection(g, order);
+
+   // Compare to different values of directions
+   const auto directions = SamplingFibonacci<Vector>(100);
+   for(const auto& w : directions) {
+   //for(int nt=0; nt<360; ++nt) {
+
+     // float theta = 2*M_PI * float(nt) / float(360);
+     // const Vector w(sin(theta), 0.0, cos(theta));
+
+      const Eigen::VectorXf ylm = SH::FastBasis(w, order);
+
+      const float vSH = ylm.dot(zhG);
+      const float vHG = HeyneyeGreenstein(w, g);
+
+      //std::cout << theta << "\t" << vHG << "\t" << vSH << std::endl;
+      if(!closeTo(vSH, vHG)) {
+         std::cout << "Error: with g=" << g << " and w=";
+         std::cout << w << " => " << vSH << " ≠ " << vHG << std::endl;
+         nb_fails++;
+      }
+   }
+
+   return nb_fails;
 }
 
 int main(int argc, char** argv) {
@@ -128,6 +144,12 @@ int main(int argc, char** argv) {
 
    int order = 5;
    int exp   = 1;
+
+
+   // Test the HG decomposition for trivial case:
+   nb_fails += TestHeyneyeProjection(0.0f, 5);
+   nb_fails += TestHeyneyeProjection(0.1f, 10);
+   nb_fails += TestHeyneyeProjection(0.5f, 18);
 
    // Test the diffuse project (exponent = 1)
    nb_fails += TestPhongProjection(order, exp);
