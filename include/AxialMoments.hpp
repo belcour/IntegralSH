@@ -193,16 +193,19 @@ inline float SolidAngle(const Polygon& P) {
  */
 template<class Polygon, class Vector>
 inline bool CheckPolygon(const Polygon& P) {
-   if(P.size() == 3) {
-//*    // Check with respect to centroid
+
+   // A closed Polygon cannot be smaller than 3 Edges.
+   if(P.size() < 3) {
+      return false;
+
+   // Special case for triangles.
+   } else if(P.size() == 3) {
+      // Check with respect to centroid
       const auto D = (P[0].A + P[1].A + P[2].A) / 3.0f;
       const auto N = Vector::Cross(P[1].A-P[0].A, P[2].A-P[0].A);
       return Vector::Dot(D, N) <= 0.0f;
-/*/
-      // Check with respect to A
-      const auto N = Vector::Cross(P[0].A-P[1].A, P[1].A-P[2].A);
-      return Vector::Dot(P[0].A, N) <= 0.0f;
-//*/
+
+   // General computation
    } else {
       // This is a heuristic to select a point on the bounding box of the
       // polygon. The orientation test is then computed on this particular
@@ -227,8 +230,6 @@ inline bool CheckPolygon(const Polygon& P) {
    }
 }
 
-#define CHECK_ORIENTATION
-
 /* _Axial Moments_
  *
  * input:
@@ -244,13 +245,11 @@ inline bool CheckPolygon(const Polygon& P) {
 template<class Polygon, class Vector>
 inline Eigen::VectorXf AxialMoment(const Polygon& P, const Vector& w, int n) {
 
-#ifdef CHECK_ORIENTATION
    // Check if the polygon is well oriented
    const bool check = CheckPolygon<Polygon, Vector>(P);
    if(!check) {
       return Eigen::VectorXf::Zero(n+2);
    }
-#endif
 
    // Arvo's boundary integral for single vector moment.
    Eigen::VectorXf a = - BoundaryIntegral<Polygon, Vector>(P, w, w, n);

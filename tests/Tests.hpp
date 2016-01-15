@@ -159,11 +159,11 @@ struct PolygonConstructor : public std::vector<Vector> {
       std::cout << "C = " << P[2].A << std::endl;
 #endif
       // Constant
-      const int size = this->size();
+      const unsigned int size = this->size();
 
       // Starting vector of the Edge. This vector can be clamped if necessary
       // to account for the shading horizon.
-      int start = 0;
+      unsigned int start = 0;
       Vector A, M;
       float dotAn;
       bool condition = true;
@@ -183,7 +183,7 @@ struct PolygonConstructor : public std::vector<Vector> {
       if(start == size) { return P; }
 
       for(unsigned int k=1; k<=size; ++k) {
-         const int next = (start + k) % size;
+         const unsigned int next = (start + k) % size;
          const Vector B = Vector::Normalize(this->at(next) - p);
 
          const float dotBn = Vector::Dot(B, n);
