@@ -35,6 +35,17 @@ struct MerlProjectionThread : public std::thread {
       cijs(6, Eigen::MatrixXf::Zero(SH::Terms(order), SH::Terms(order)))
    {}
 
+   /* Pre-convolved the Zonal basis to perform smooth evaluation.
+    */
+   static void ApplyZonalFilter(Eigen::VectorXf& clm) {
+      const auto bmax = floor(sqrt(clm.size())-1);
+      for(unsigned int i=0; i<clm.size(); ++i) {
+         const auto b = floor(sqrt(i));
+         const auto f = exp(- pow(float(b)/float(bmax), 2));
+         clm[i] *= f;
+      }
+   }
+
    void run(const MerlBRDF* brdf,
             const std::vector<Vector>* dirs,
             int skip, int nthread) {
@@ -63,6 +74,10 @@ struct MerlProjectionThread : public std::thread {
             const auto rgb = brdf->value<Vector, Vector>(wi, wo);
             SH::FastBasis(wi, order, ylmi);
 
+            // Apply filtering
+            //ApplyZonalFilter(ylmo);
+            //ApplyZonalFilter(ylmi);
+
             Eigen::MatrixXf mat = ylmo * ylmi.transpose();
 #ifndef SYMMETRIZE
             mat = 0.5f*(mat + mat.transpose());
@@ -87,7 +102,7 @@ struct MerlProjectionThread : public std::thread {
 };
 
 int MerlProjectionMatrix(const std::string& filename,
-                         int order = 15, int N = 100000) {
+                         int order = 15, int N = 1000) {
 
    // Constants
    const int size = SH::Terms(order);
@@ -205,7 +220,7 @@ int main(int argc, char** argv) {
    int nb_fails = 0;
    std::string filename;
    int order = 3;
-   int nb = 10000;
+   int nb = 1000;
    if(! parseArguments(argc, argv, filename, order, nb)) {
       return EXIT_SUCCESS;
    }
