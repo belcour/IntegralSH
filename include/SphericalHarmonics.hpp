@@ -179,7 +179,10 @@ inline std::vector<Eigen::MatrixXf> TripleTensorProduct(
          Eigen::MatrixXf mat(msize, msize);
          Eigen::VectorXf clm(msize);
 
-         res = std::vector<Eigen::MatrixXf>(3, Eigen::MatrixXf::Zero(msize, msize));
+         res.reserve(3);
+         res.push_back(Eigen::MatrixXf::Zero(msize, msize));
+         res.push_back(Eigen::MatrixXf::Zero(msize, msize));
+         res.push_back(Eigen::MatrixXf::Zero(msize, msize));
 
          for(unsigned int k=start; k<end; ++k) {
             // Get the vector

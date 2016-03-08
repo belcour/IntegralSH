@@ -80,3 +80,50 @@ inline void SaveMatrices(const std::string& filename,
    }
    std::fclose(out);
 }
+
+/* Enable to load a list of Eigen Matrices to binary format
+ */
+inline Eigen::MatrixXf LoadMatrix(const std::string& filename) {
+   // Open file
+   auto out = std::fopen(filename.c_str(), "r");
+   if(out == nullptr) {
+      IOError ioException(filename);
+      throw ioException;
+   }
+
+   // Load the number of matrices
+   Eigen::MatrixXf mat;
+   int nrows;
+   int ncols;
+   size_t s = std::fread(&nrows, sizeof(int), 1, out);
+   assert(s == 1);
+   s = std::fread(&ncols, sizeof(int), 1, out);
+   assert(s == 1);
+   mat = Eigen::MatrixXf(nrows, ncols);
+   s = std::fread(mat.data(), sizeof(float), nrows*ncols, out);
+   assert(s == size_t(nrows*ncols));
+
+   std::fclose(out);
+   return mat;
+}
+
+/* Enable to save a list of Eigen Matrices from a binary format
+ */
+inline void SaveMatrix(const std::string& filename,
+                         const Eigen::MatrixXf& mat) {
+
+   // File descriptor
+   auto out = std::fopen(filename.c_str(), "w");
+
+   // Output the matrix size
+   const int nrows = mat.rows();
+   const int ncols = mat.cols();
+   size_t s = std::fwrite(&nrows, sizeof(int), 1, out);
+   assert(s == 1);
+   s = std::fwrite(&ncols, sizeof(int), 1, out);
+   assert(s == 1);
+   s = std::fwrite(mat.data(), sizeof(float), nrows*ncols, out);
+   assert(s == size_t(nrows*ncols));
+
+   std::fclose(out);
+}
