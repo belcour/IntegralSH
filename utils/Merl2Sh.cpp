@@ -30,10 +30,7 @@ struct MerlProjectionThread : public std::thread {
    MerlProjectionThread(const MerlBRDF* brdf,
                         const std::vector<Vector>* ws,
                         int order, int skip, int nthread) :
-      std::thread(&MerlProjectionThread::run, this, brdf, ws, skip, nthread),
-      order(order),
-      cijs(6, Eigen::MatrixXf::Zero(SH::Terms(order), SH::Terms(order)))
-   {}
+      std::thread(&MerlProjectionThread::run, this, brdf, ws, skip, order, nthread) {}
 
    /* Pre-convolved the Zonal basis to perform smooth evaluation.
     */
@@ -48,7 +45,9 @@ struct MerlProjectionThread : public std::thread {
 
    void run(const MerlBRDF* brdf,
             const std::vector<Vector>* dirs,
-            int skip, int nthread) {
+            int skip, int order, int nthread) {
+
+      cijs = std::vector<Eigen::MatrixXf>(6, Eigen::MatrixXf::Zero(SH::Terms(order), SH::Terms(order)));
 
       const int size = SH::Terms(order);
       Eigen::VectorXf ylmo(size);

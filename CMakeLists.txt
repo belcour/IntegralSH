@@ -6,7 +6,7 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 #include (OptimizeForArchitecture)
 
 # For debug build
-set(CMAKE_BUILD_TYPE RELEASE)
+set(CMAKE_BUILD_TYPE DEBUG)
 
 if ( CMAKE_COMPILER_IS_GNUCC )
    add_definitions ("-Wall -pedantic")
@@ -57,14 +57,21 @@ add_executable (Merl2Sh utils/Merl2Sh.cpp)
 target_compile_features(Merl2Sh PRIVATE cxx_range_for)
 target_compile_options(Merl2Sh INTERFACE -O3 -msse3 -mfpmath=sse)
 target_link_libraries(Merl2Sh ${CMAKE_THREAD_LIBS_INIT})
-if($ENV{ALTA_DIR})
-   include_directories ("$ENV{ALTA_DIR}")
+
+set(ALTA_INCLUDE_DIR " " CACHE "ALTA include directory" PATH)
+set(ALTA_LIBRARY     " " CACHE "ALTA core library file" FILEPATH)
+
+if( (EXISTS "${ALTA_INCLUDE_DIR}/core/plugins_manager.h") AND
+    (EXISTS ${ALTA_LIBRARY}) )
+   message("Using ALTA library")
+   include_directories(${ALTA_INCLUDE_DIR})
    add_executable (Alta2Sh utils/Alta2Sh.cpp)
    target_compile_features(Alta2Sh PRIVATE cxx_range_for)
    target_compile_options(Alta2Sh INTERFACE -O3 -msse3 -mfpmath=sse -m64 -march=nocona)
-   set(LDDIR "$ENV{ALTA_LIB}")
-   target_link_libraries(Alta2Sh ${CMAKE_THREAD_LIBS_INIT} -L${LDDIR} 'core' -m64)
-endif($ENV{ALTA_DIR})
+   target_link_libraries(Alta2Sh ${CMAKE_THREAD_LIBS_INIT} ${ALTA_LIBRARY})
+else()
+   message("Could not find plugins_manager.h in ${ALTA_INCLUDE_DIR} or ${ALTA_LIBRARY}")
+endif()
 
 add_executable (IntegralConvergence utils/IntegralConvergence.cpp)
 target_compile_features(IntegralConvergence PRIVATE cxx_range_for)

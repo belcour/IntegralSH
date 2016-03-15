@@ -110,20 +110,19 @@ struct AltaBRDF {
 
 struct AltaProjectionThread : public std::thread {
 
-   int order;
    std::vector<Eigen::MatrixXf> cijs;
 
    AltaProjectionThread(const AltaBRDF* brdf,
                         const std::vector<Vector>* ws,
-                        int order, int skip, int nthread) :
-      std::thread(&AltaProjectionThread::run, this, brdf, ws, skip, nthread),
-      order(order),
-      cijs(6, Eigen::MatrixXf::Zero(SH::Terms(order), SH::Terms(order)))
-   {}
+                        int _order, int _skip, int _nthread) :
+      std::thread(&AltaProjectionThread::run, this, brdf, ws, _skip, _order, _nthread) {}
 
    void run(const AltaBRDF* brdf,
             const std::vector<Vector>* dirs,
-            int skip, int nthread) {
+            int skip, int order, int nthread) {
+
+      // Allocate memory
+      cijs = std::vector<Eigen::MatrixXf>(6, Eigen::MatrixXf::Zero(SH::Terms(order), SH::Terms(order)));
 
       const int size = SH::Terms(order);
       Eigen::VectorXf ylmo(size);
@@ -265,6 +264,8 @@ bool parseArguments(int argc, char** argv, std::string& filename,
    for(int k=0; k<argc; ++k) {
       if(argv[k] == std::string("-h") || argv[k] == std::string("--help")) {
          std::cerr << "Usage: alta2sh [options] [-p plugin_name] [-t {data|func}] filename" << std::endl;
+         std::cerr << "       + -o  [int] maxiumum SH order (default = 3)" << std::endl;
+         std::cerr << "       + -nb [int] number of integration samples (default = 10000)" << std::endl;
          return false;
       }
       if((argv[k] == std::string( "-o") || argv[k] == std::string("--order")) && k+1<argc) {
