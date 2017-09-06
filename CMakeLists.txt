@@ -6,6 +6,7 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 #include (OptimizeForArchitecture)
 
 # For debug build
+#set(CMAKE_BUILD_TYPE RELEASE)
 set(CMAKE_BUILD_TYPE DEBUG)
 
 if ( CMAKE_COMPILER_IS_GNUCC )
@@ -28,6 +29,7 @@ add_executable (TestSpheHar  tests/SphericalH.cpp    include/AxialMoments.hpp in
 add_executable (TestRotation tests/TestRotations.cpp)
 add_executable (TestProduct  tests/TestProduct.cpp)
 add_executable (UnitIntegral tests/UnitIntegral.cpp)
+add_executable (TimingsTests tests/Timings.cpp)
 target_link_libraries(TestRotation ${CMAKE_THREAD_LIBS_INIT})
 target_compile_features(TestUtils    PRIVATE cxx_range_for)
 target_compile_features(TestMnVsArvo PRIVATE cxx_range_for)
@@ -39,6 +41,7 @@ target_compile_features(TestSpheHar  PRIVATE cxx_range_for)
 target_compile_features(TestRotation PRIVATE cxx_range_for)
 target_compile_features(TestProduct  PRIVATE cxx_range_for)
 target_compile_features(UnitIntegral PRIVATE cxx_range_for)
+target_compile_features(TimingsTests PRIVATE cxx_range_for)
 
 enable_testing()
 add_test(TestUtils    TestUtils)
