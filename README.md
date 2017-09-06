@@ -49,4 +49,4 @@ Then the `AxialMoments` method will return the vector of cosine power integrals 
 
 ### Contacts ###
 
-For any questions or remarks, please ask to laurent.belcour@umontreal.ca
+For any questions or remarks, please ask to laurent.belcour@gmail.com
