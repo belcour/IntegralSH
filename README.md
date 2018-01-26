@@ -1,6 +1,6 @@
 ## Analytical Integration of Spherical Harmonics ##
 
-This code implements the analytical integration method from *A Closed-Form Method for Integrating Arbitrary Spherical Polynomials*.
+This code implements the analytical integration method from *Integrating Clipped Spherical Harmonics Expansions*.
 
 
 ### Use this code ###
